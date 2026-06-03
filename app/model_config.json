@@ -1,0 +1,18 @@
+{
+  "model_name": "tf_efficientnetv2_s",
+  "threshold": 0.29,
+  "num_classes": 2,
+  "img_size": 224,
+  "label_names": [
+    "non_atopy",
+    "atopy"
+  ],
+  "task": "atopy_binary_classification",
+  "external_performance": {
+    "accuracy": 0.8056,
+    "f1": 0.811,
+    "auc": 0.8283,
+    "sensitivity": 0.6923,
+    "specificity": 0.8415
+  }
+}
