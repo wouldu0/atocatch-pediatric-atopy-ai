@@ -96,6 +96,18 @@
 | **Recall** | **0.7667** |
 | 입력 변수 | 11개 이진 변수 |
 
+### 🧪 탐색적 분석: 생존분석 (서비스 미채택)
+
+같은 한국아동패널 데이터로 발병 **시점**까지 고려하는 Kaplan-Meier / Cox 비례위험모델도 시도했으나, 최종 서비스에는 채택하지 않았습니다.
+
+| 분석 | parent_AD | area_apt | mold_ever |
+|------|-----------|----------|-----------|
+| Log-rank test | ✅ p=0.0039 | ✅ p<0.001 | ✅ p=0.0314 |
+| Cox 단변량 (전체 변수) | — | △ p=0.089 (비유의) | ❌ p=0.187 (비유의) |
+| Cox 다변량 (`training/survival_analysis`) | ✅ 유의 | 변수 선택에서 제외/비유의 | 변수 선택에서 제외/비유의 |
+
+> ⚠️ **미채택 이유**: `parent_AD`(부모 아토피)를 제외하면 변수별로 검정 방법(Log-rank ↔ Cox 단변량 ↔ Cox 다변량)에 따라 유의성·방향이 흔들려 신뢰도 있는 위험 인자로 확정하기 어려웠습니다. 반면 로지스틱 회귀 모델은 동일 데이터에서 4개 인자 모두 p<0.05로 안정적으로 유의했기 때문에, 서비스용 위험도 예측은 로지스틱 회귀 모델로 확정했습니다. 분석 코드와 산출물은 재현·참고용으로 `training/survival_analysis/`에 보존합니다.
+
 ---
 
 ## 📊 데이터셋
@@ -106,7 +118,8 @@
 | 실제 피부 이미지 | DermNet NZ (직접 크롤링) | 265장 | 외부 검증·도메인 갭 보완 |
 | 영유아 패널 데이터 | 한국아동패널 (1~10차) | N=1,967명 | 설문 위험도 모델 학습 |
 
-> ⚠️ AI Hub 데이터는 라이선스 제한으로 레포지토리에 포함되지 않습니다.
+> ⚠️ AI Hub 데이터는 라이선스 제한으로 레포지토리에 포함되지 않습니다.  
+> 🕷️ DermNet NZ 크롤러는 `training/image_classification/data_crawl_dermnet.py`에서 확인할 수 있습니다. (DermNet NZ 저작권 하에 있으므로 재사용 시 출처를 명시하세요.)
 
 ---
 
@@ -145,13 +158,18 @@ AtoCatch/
     │   ├── utils_threshold.py        # 임계값 최적화 (Youden's J)
     │   ├── utils_early_stopping.py   # Early stopping 구현
     │   ├── utils_log.py              # 학습 로그
-    │   └── eval_comparison.py        # 모델 비교 실험
-    └── survey_model/
-        ├── train_features.py         # 설문 피처 학습 (로지스틱 회귀)
-        ├── train_xgboost.py          # XGBoost 실험
-        ├── data_merge.py             # 원시 데이터 병합
-        ├── data_merge_v2.py          # 데이터 병합 v2
-        └── eval_univariate.py        # 단변량 분석
+    │   ├── eval_comparison.py        # 모델 비교 실험
+    │   └── data_crawl_dermnet.py     # DermNet NZ 이미지 크롤러
+    ├── survey_model/
+    │   ├── train_features.py         # 설문 피처 학습 (로지스틱 회귀)
+    │   ├── train_xgboost.py          # XGBoost 실험
+    │   ├── data_merge.py             # 원시 데이터 병합
+    │   ├── data_merge_v2.py          # 데이터 병합 v2
+    │   └── eval_univariate.py        # 단변량 분석
+    └── survival_analysis/            # 생존분석 (탐색 후 미채택, 참고용)
+        ├── eval_survival_v1.py       # KM 생존곡선 + Cox 단변량
+        ├── eval_survival_v2.py       # Cox 단변량→다변량 변수선택 + KM
+        └── results/                  # Cox/Log-rank 결과, KM·Forest plot
 ```
 
 ---
