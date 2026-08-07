@@ -70,10 +70,14 @@
 | **Sensitivity** | 69.2% | 90.6% |
 | **Threshold** | 0.29 (Youden's J) | 0.38 (F1 최적) |
 | 학습 데이터 | AI Hub 합성 3,600장 + DermNet 160장 | AI Hub IGA 라벨 1,800장 |
-| 외부 검증 | DermNet 실제 이미지 265장 | 합성 데이터 내부 검증 |
+| 평가 데이터 | DermNet 실제 이미지 홀드아웃(약 105~108장) | 합성 데이터 내부 검증 |
 
-> 🔑 **핵심 인사이트**: 합성 데이터 단독 내부 성능 95.8% → 실제 이미지(DermNet 265장) 외부 검증 62.6%로 급락.  
-> DermNet 실제 이미지 157장을 학습에 믹싱하면 나머지 108장 홀드아웃 기준 외부 Acc가 76.9%까지 **+14.2%p** 향상 (도메인 갭 공략 — 믹싱 전후 외부 테스트셋 크기가 달라 참고용 수치입니다)
+> 🔑 **핵심 인사이트**: 합성 데이터 단독 내부 성능 95.8% → 실제 이미지(DermNet 265장) 평가 62.6%로 급락.  
+> DermNet 실제 이미지 157장을 학습에 믹싱하면 나머지 108장 홀드아웃 기준 Acc가 76.9%까지 **+14.2%p** 향상 (도메인 갭 공략 — 믹싱 전후 홀드아웃 크기가 달라 참고용 수치입니다)
+>
+> ⚠️ **"외부 검증"이 아니라 "DermNet holdout 평가"로 정정**: DermNet holdout set을 활용해 실제 피부 이미지에서의 domain gap을 확인하고 모델 구조 및 threshold를 탐색했습니다. **동일한 holdout set이 모델 선택(`eval_comparison.py`)과 threshold 설정(`utils_threshold.py`)에도 사용되어**, 위 표의 80.6%는 완전히 독립적인 external test 성능으로 해석할 수 없습니다. 숫자 자체는 정확하지만 "5개 아키텍처 중 최고 성능을 낸 모델을, 같은 데이터로 최적 threshold까지 고른 뒤, 같은 데이터로 다시 평가한 결과"라는 한계가 있습니다.
+>
+> ⚠️ **AI Hub 데이터 subject-level 중복 가능성**: AI Hub 라벨 데이터는 `정면`/`측면` 두 각도로 촬영되어 있으나, 원본 subject identifier를 보유하고 있지 않아 동일 아동의 이미지가 train/val/test split 간에 중복되었는지 검증할 수 없었습니다.
 
 ### 📋 설문 위험도 모델 (Logistic Regression)
 
@@ -90,16 +94,19 @@
 
 | 모델 설정 | |
 |---|---|
-| 알고리즘 | Logistic Regression (`C=0.01`, `max_iter=3000`) — 배포된 `atopy_service_model.joblib`을 직접 로드해 확인 |
+| 알고리즘 | Logistic Regression (`C=0.01`, `penalty='l2'`, `max_iter=3000`, `solver='lbfgs'`) |
 | 전처리 | 범주형 9개: 최빈값 대치 + One-Hot, 연속형 2개(`rural_years`, `outdoor_avg`): 중앙값 대치 + 표준화 |
-| 입력 변수 | 11개 변수 (범주형 9개 + 연속형 2개: `rural_years`, `outdoor_avg`) |
-| 위험도 표시 | 예측 확률 기준 **저위험(<13%) · 중위험(13~20%) · 고위험(≥20%)** 3단계 ([app_main.py](app/app_main.py)) |
+| 입력 변수 | 11개 변수 (범주형 9개 + 연속형 2개), 총 6개 변수 세트(A~F: 핵심4개/출생/환경/식습관/전체/민감도) 중 `C_core4_environment` 채택 |
+| Train/Val/Test | 60% / 20% / 20%, `stratify=Y`, `random_state=42` |
+| Threshold | **0.12** — Validation set에서 F2-score 기준 탐색, 4개 변수 세트 × 4개 샘플링 전략(NoSampling/ClassWeight/RandomOverSampler/SMOTE) × 4개 모델(LogisticRegression/RandomForest/GradientBoosting/MLP) 비교 중 채택 |
+| Test 성능 | AUC 0.629, Recall **0.7667**, Precision 0.181, F1 0.293 |
+| 위험도 표시 | 예측 확률 기준 **저위험(<13%) · 중위험(13~20%) · 고위험(≥20%)** 3단계 ([app_main.py](app/app_main.py)) — 서비스 UI용으로 threshold 0.12를 3단계로 재해석 |
 
-> ⚠️ **Isotonic Calibration 관련 정정**: 사업계획서에는 이 모델에 Isotonic Calibration이 적용됐다고 되어 있지만, 배포된 `atopy_service_model.joblib`을 직접 로드해 확인한 결과 보정 단계 없는 순수 `LogisticRegression`입니다. 위 표는 joblib 내부를 직접 읽어 확인한 값으로 정정했습니다.
+> ⚠️ **Isotonic Calibration 정정**: 사업계획서에는 Isotonic Calibration이 적용됐다고 되어 있지만, 실제로는 보정 단계 없는 순수 `LogisticRegression`입니다.
 >
-> **Threshold 0.12 / Recall 0.7667 관련**: threshold·recall은 학습된 `LogisticRegression` 객체 자체에는 저장되지 않는 값이라 joblib에서 직접 확인할 방법이 없습니다. `backup/data/feature_selection_outputs/`, `model_results(log)/` 등 로컬에 남아있는 평가 산출물을 전부 확인했지만 이 11개 변수 모델에 대한 threshold·recall 기록은 찾지 못했습니다 (0.12/0.7667이라는 숫자 자체는 사업계획서 PPT에 있지만, 그건 확인 결과 다른 인구집단·변수셋을 쓰는 별개 모델의 수치였습니다 — 위 "설문 위험도 모델" 서두 참고). 따라서 근거를 못 찾은 채로 이 모델의 확정 성능처럼 적지 않았습니다.
+> ✅ **원본 학습 스크립트를 찾아 검증 완료**: `training/survey_model/train_final_service_model.py`가 `atopy_service_model.joblib`을 실제로 만든 원본 스크립트입니다. 직접 재실행해 배포본과 계수를 대조한 결과 **최대 절대 오차 2.9×10⁻¹⁶(부동소수점 수준)으로 완전히 일치**하고, Threshold 0.12에서 Test Recall도 정확히 0.7667로 재현됩니다. 위 표의 수치는 전부 이 재실행 결과입니다.
 >
-> `training/survey_model/reconstruct_survey_model.py`는 저장된 배포 모델(joblib)에서 확인한 전처리·모델 구조를 그대로 재구성해 `pskc_final.csv` 전체로 다시 학습합니다. **계수의 부호와 상대적 크기는 배포본과 일치하지만 절대값은 정확히 일치하지 않습니다** — 원 학습에 쓰인 train/test split과 random seed 기록이 남아있지 않아(11개 변수 모두 결측률 27~34%) 완전히 동일한 계수 재현은 보장하지 않습니다. 기존 `atopy_service_model.joblib`은 덮어쓰지 않았고, 재구성 결과는 별도 파일로 저장됩니다.
+> ⚠️ **단, 이 검증은 "코드가 배포본을 정확히 재현하는가"만 확인한 것입니다.** `[1]~[6]` 파생변수 단계의 아토피 진단(Y) 정의 자체는 별도로 한국아동패널 공식 코드북과 대조 중이며, 8~9차 결측 처리 등에서 코호트 정의 오류 가능성이 발견되어 재검토하고 있습니다 — 재검토 결과에 따라 위 수치들이 바뀔 수 있습니다.
 
 ### 🧪 탐색적 분석: 생존분석 (서비스 미채택)
 
@@ -120,7 +127,7 @@
 | 데이터 | 출처 | 규모 | 용도 |
 |--------|------|------|------|
 | 아토피·피부 이미지 | AI Hub (한국지능정보사회진흥원) | 10,800장 (6 클래스 × 1,800) | 이미지 분류 모델 학습 |
-| 실제 피부 이미지 | DermNet NZ (직접 크롤링) | 265장 | 외부 검증·도메인 갭 보완 |
+| 실제 피부 이미지 | DermNet NZ (직접 크롤링) | 265장 | Holdout 평가·도메인 갭 보완 (모델·threshold 선택에도 재사용됨) |
 | 영유아 패널 데이터 | 한국아동패널 (1~10차) | N=1,967명 | 설문 위험도 모델 학습 |
 
 > ⚠️ AI Hub 데이터는 라이선스 제한으로 레포지토리에 포함되지 않습니다.  
@@ -163,7 +170,7 @@ AtoCatch/
     │   ├── train_features.py         # 설문 피처 가공 (pskc_final.csv 생성 — 모델 학습은 하지 않음)
     │   ├── train_xgboost.py          # XGBoost 비교 실험
     │   ├── eval_logistic_v2.py       # 로지스틱 회귀 v1/v2 변수셋 비교 (statsmodels OR·CI·p-value)
-    │   ├── reconstruct_survey_model.py  # 배포 joblib에서 확인한 구조로 재구성 학습 (exact reproduction 아님, 위 설문 모델 절 참고)
+    │   ├── train_final_service_model.py # atopy_service_model.joblib 원본 학습 스크립트 (배포본과 계수 bit-exact 일치 확인, 위 설문 모델 절 참고)
     │   ├── data_merge.py             # 차수별 원시 데이터 병합 (merged.csv)
     │   ├── data_build_ad_history.py  # 차수별 아토피 진단 이력 구축 (pskc_ad_history.csv)
     │   └── eval_univariate.py        # 단변량 분석
@@ -175,7 +182,7 @@ AtoCatch/
 ```
 
 > ⚠️ **재현 스크립트 관련**
-> - 설문 위험도 모델: 배포된 `atopy_service_model.joblib`을 직접 로드해 파이프라인 구조(전처리 + `LogisticRegression(C=0.01)`)를 확인했고, `training/survey_model/reconstruct_survey_model.py`가 그 구조로 재구성 학습을 시도합니다. 원 학습에 쓰인 train/test split·random seed 기록이 남아있지 않아 exact reproduction은 아닙니다 (자세한 내용은 위 "설문 위험도 모델" 절 참고).
+> - 설문 위험도 모델: `training/survey_model/train_final_service_model.py`가 `atopy_service_model.joblib`을 실제로 만든 원본 스크립트로 확인됐습니다 (계수 bit-exact 일치, 자세한 내용은 위 "설문 위험도 모델" 절 참고). 다만 이 스크립트의 Y(아토피 발생) 정의 자체는 코드북 대조 재검토 중입니다.
 > - IGA 중증도 모델(`best_iga_model.pth`)을 실제로 학습한 스크립트는 이 레포에도, 관련된 다른 로컬 프로젝트 폴더에도 없었습니다. **확인된 것**: `tf_efficientnetv2_s(num_classes=2)`에 `strict=True`로 정상 로드됨(아키텍처·출력 클래스 수 일치), `data_matching.py`에 AI Hub 데이터에서 IGA 등급을 라벨링하는 전처리 코드 존재. **확인 안 된 것(추정하지 않음)**: optimizer, learning rate, loss, scheduler, augmentation, train/val/test split, random seed, epoch 수, class weighting 여부. 원 학습 스크립트를 찾을 때까지 이 모델을 재현하는 학습 코드는 추가하지 않습니다 — 아키텍처만 보고 학습 설정을 추정해서 만든 코드는 `best_iga_model.pth`의 재현이 아니라 별개의 새 구현이기 때문입니다.
 
 ---
