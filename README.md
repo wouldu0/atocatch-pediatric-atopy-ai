@@ -72,8 +72,8 @@
 | 학습 데이터 | AI Hub 합성 3,600장 + DermNet 160장 | AI Hub IGA 라벨 1,800장 |
 | 외부 검증 | DermNet 실제 이미지 265장 | 합성 데이터 내부 검증 |
 
-> 🔑 **핵심 인사이트**: 합성 데이터 단독 내부 성능 ~95% → 실제 이미지 외부 검증 55%로 급락.  
-> DermNet 실제 이미지 160장 소량 믹싱만으로 외부 Acc **+14.3%p** 향상 (도메인 갭 공략)
+> 🔑 **핵심 인사이트**: 합성 데이터 단독 내부 성능 95.8% → 실제 이미지(DermNet 265장) 외부 검증 62.6%로 급락.  
+> DermNet 실제 이미지 157장을 학습에 믹싱하면 나머지 108장 홀드아웃 기준 외부 Acc가 76.9%까지 **+14.2%p** 향상 (도메인 갭 공략 — 믹싱 전후 외부 테스트셋 크기가 달라 참고용 수치입니다)
 
 ### 📋 설문 위험도 모델 (Logistic Regression)
 
@@ -90,11 +90,11 @@
 
 | 모델 설정 | |
 |---|---|
-| 알고리즘 | Logistic Regression (L2, C=0.01) |
-| 보정 | Isotonic Calibration |
-| Threshold | 0.12 (고위험군 민감도 우선) |
-| **Recall** | **0.7667** |
-| 입력 변수 | 11개 이진 변수 |
+| 알고리즘 | Logistic Regression |
+| 입력 변수 | 11개 이진/연속 변수 (항생제 복용, 부모 아토피·비염·천식, 형제자매 알레르기, 반려동물, 층간 곰팡이, 간접흡연 등) |
+| 위험도 표시 | 예측 확률 기준 **저위험(<13%) · 중위험(13~20%) · 고위험(≥20%)** 3단계 ([app_main.py](app/app_main.py)) |
+
+> ⚠️ `training/survey_model/`에는 피처 가공 스크립트(`train_features.py`)와 실험용 XGBoost 비교(`train_xgboost.py`)만 포함되어 있습니다. 배포된 `atopy_service_model.joblib`을 실제로 학습·보정한 스크립트는 현재 레포에 없어 재현 스크립트가 누락된 상태입니다.
 
 ### 🧪 탐색적 분석: 생존분석 (서비스 미채택)
 
@@ -103,10 +103,10 @@
 | 분석 | parent_AD | area_apt | mold_ever |
 |------|-----------|----------|-----------|
 | Log-rank test | ✅ p=0.0039 | ✅ p<0.001 | ✅ p=0.0314 |
-| Cox 단변량 (전체 변수) | — | △ p=0.089 (비유의) | ❌ p=0.187 (비유의) |
-| Cox 다변량 (`training/survival_analysis`) | ✅ 유의 | 변수 선택에서 제외/비유의 | 변수 선택에서 제외/비유의 |
+| Cox 단변량 (전체 변수, [cox_univariate.csv](training/survival_analysis/results/cox_univariate.csv)) | ✅ p=0.0044 | ✅ p<0.001 | ✅ p=0.0324 |
+| Cox 다변량 ([cox_multivariate.csv](training/survival_analysis/results/cox_multivariate.csv)) | ❌ p=0.126 (비유의) | ❌ p=0.182 (비유의) | ✅ p=0.022 (유의) |
 
-> ⚠️ **미채택 이유**: `parent_AD`(부모 아토피)를 제외하면 변수별로 검정 방법(Log-rank ↔ Cox 단변량 ↔ Cox 다변량)에 따라 유의성·방향이 흔들려 신뢰도 있는 위험 인자로 확정하기 어려웠습니다. 반면 로지스틱 회귀 모델은 동일 데이터에서 4개 인자 모두 p<0.05로 안정적으로 유의했기 때문에, 서비스용 위험도 예측은 로지스틱 회귀 모델로 확정했습니다. 분석 코드와 산출물은 재현·참고용으로 `training/survival_analysis/`에 보존합니다.
+> ⚠️ **미채택 이유**: 변수별로 검정 방법(Log-rank ↔ Cox 단변량 ↔ Cox 다변량)에 따라 유의성이 흔들려 신뢰도 있는 위험 인자를 확정하기 어려웠습니다 — 예를 들어 `parent_AD`는 단변량까지는 유의했지만 다른 변수를 통제한 다변량에서는 유의성을 잃었고, 반대로 `mold_ever`는 다변량에서만 유의했습니다. 로지스틱 회귀 모델은 동일 데이터에서 4개 인자 모두 p<0.05로 안정적으로 유의했기 때문에, 서비스용 위험도 예측은 로지스틱 회귀 모델로 확정했습니다. 분석 코드와 산출물은 재현·참고용으로 `training/survival_analysis/`에 보존합니다.
 
 ---
 
@@ -127,50 +127,50 @@
 
 ```
 AtoCatch/
-├── app/                              # Streamlit 웹 앱
-│   ├── app_main.py                   # 메인 앱 (홈·설문·이미지 분석·챗봇·기록)
+├── app/                              # Streamlit 웹 앱 (streamlit run app/app_main.py 로만 실행)
+│   ├── app_main.py                   # 메인 앱 (로그인·회원가입·홈·설문·이미지 분석·챗봇·기록 전부 포함)
 │   ├── gradcam_module.py             # Grad-CAM 시각화 모듈
 │   ├── rag_engine.py                 # RAG 챗봇 엔진
-│   ├── login_page.py                 # 로그인 페이지
-│   ├── signup_page.py                # 회원가입 페이지
-│   ├── model_config.json             # 아토피 유무 모델 설정
-│   ├── model_config2.json            # 중증도 모델 설정
-│   ├── atopy_service_model.joblib    # 설문 위험도 모델
+│   ├── model_config.json             # 아토피 유무 모델 메타데이터 (comparison 실험에서 채택된 tf_efficientnetv2_s 성능 기록)
+│   ├── model_config2.json            # 중증도 모델 메타데이터
+│   ├── atopy_service_model.joblib    # 설문 위험도 모델 (학습된 결과물 — 학습 코드는 아래 참고)
 │   ├── requirements.txt
 │   ├── design/                       # UI 이미지 에셋
 │   ├── screenshots/                  # 앱 스크린샷
-│   └── survey_model/                 # 설문 모델 학습 데이터
+│   └── survey_model/                 # 설문 모델 계수·학습 데이터
 │
 └── training/                         # 모델 학습 코드
     ├── image_classification/
-    │   ├── train_binary.py           # 아토피 유무 이진 분류 학습
-    │   ├── train_binary_final.py     # 최종 이진 분류 모델
-    │   ├── train_severity.py         # IGA 중증도 분류 학습
-    │   ├── predict.py                # 단일 이미지 추론
+    │   ├── train_binary.py               # 아토피 유무 이진 분류 학습 (v1, 합성데이터만)
+    │   ├── train_binary_dermnet_mix_v2.py # 이진 분류 학습 v2 (DermNet 믹싱, efficientnet_b0)
+    │   ├── train_binary_final.py         # eval_comparison.py가 만든 tf_efficientnetv2_s 가중치를 DermNet으로 재평가 (학습 아님)
+    │   ├── eval_comparison.py            # 5개 아키텍처 비교 실험 — 여기서 나온 tf_efficientnetv2_s가 실제 배포 모델
+    │   ├── predict.py                    # 단일 이미지 추론 (eval_comparison.py가 만든 tf_efficientnetv2_s 가중치 사용)
     │   ├── data_setup.py             # 데이터 초기 설정
     │   ├── data_split.py             # Train/Val/Test 분할
     │   ├── data_split_raw.py         # 원시 데이터 분할 유틸
-    │   ├── data_prepare.py           # 데이터셋 준비
-    │   ├── data_processing.py        # 이미지 전처리
+    │   ├── data_prepare.py           # 데이터셋 준비 (data_split.py 실행 직후 이어서 실행)
     │   ├── data_matching.py          # 이미지 매칭
     │   ├── utils_gradcam.py          # Grad-CAM 모듈
-    │   ├── utils_grade.py            # 중증도 등급 모듈
     │   ├── utils_threshold.py        # 임계값 최적화 (Youden's J)
-    │   ├── utils_early_stopping.py   # Early stopping 구현
-    │   ├── utils_log.py              # 학습 로그
-    │   ├── eval_comparison.py        # 모델 비교 실험
-    │   └── data_crawl_dermnet.py     # DermNet NZ 이미지 크롤러
+    │   ├── data_crawl_dermnet.py     # DermNet NZ 이미지 크롤러
     ├── survey_model/
-    │   ├── train_features.py         # 설문 피처 학습 (로지스틱 회귀)
-    │   ├── train_xgboost.py          # XGBoost 실험
-    │   ├── data_merge.py             # 원시 데이터 병합
-    │   ├── data_merge_v2.py          # 데이터 병합 v2
+    │   ├── train_features.py         # 설문 피처 가공 (pskc_final.csv 생성 — 모델 학습은 하지 않음)
+    │   ├── train_xgboost.py          # XGBoost 비교 실험
+    │   ├── eval_logistic_v2.py       # 로지스틱 회귀 v1/v2 변수셋 비교 (statsmodels OR·CI·p-value)
+    │   ├── data_merge.py             # 차수별 원시 데이터 병합 (merged.csv)
+    │   ├── data_build_ad_history.py  # 차수별 아토피 진단 이력 구축 (pskc_ad_history.csv)
     │   └── eval_univariate.py        # 단변량 분석
     └── survival_analysis/            # 생존분석 (탐색 후 미채택, 참고용)
-        ├── eval_survival_v1.py       # KM 생존곡선 + Cox 단변량
-        ├── eval_survival_v2.py       # Cox 단변량→다변량 변수선택 + KM
-        └── results/                  # Cox/Log-rank 결과, KM·Forest plot
+        ├── eval_survival_v1.py               # KM 생존곡선 + Cox 단변량
+        ├── eval_survival_v2.py               # Cox 단변량→다변량 변수선택 + KM
+        ├── eval_survival_v3_early_predictors.py  # 1~3차 변수로 4~10차 발병 예측 (로지스틱+생존분석)
+        └── results/                          # Cox/Log-rank 결과, KM·Forest plot
 ```
+
+> ⚠️ **재현 스크립트 누락 2건**
+> - 설문 위험도 모델(`atopy_service_model.joblib`)을 실제로 학습·보정(Isotonic Calibration, 임계값 선정)한 스크립트가 레포에 없습니다. `eval_logistic_v2.py`가 같은 데이터로 만든 가장 가까운 로지스틱 분석이지만 변수 구성이 다르고 보정·저장 단계가 없어 완전히 같은 파이프라인은 아닙니다.
+> - IGA 중증도 모델(`best_iga_model.pth`, `tf_efficientnetv2_s`)을 실제로 학습한 스크립트도 레포에 없습니다. `data_matching.py`에 AI Hub 원본 데이터에서 IGA 등급을 라벨링하는 전처리 코드는 있지만, 그 라벨로 모델을 학습하는 스크립트는 찾지 못했습니다.
 
 ---
 

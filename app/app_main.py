@@ -312,6 +312,12 @@ def _download_model_if_needed(path, gdrive_id):
 _download_model_if_needed("best_model.pth", "1khrt-QelCpdcf8PbDCvMb5kVnRc2evP5")
 _download_model_if_needed("best_iga_model.pth", "1VydTQalT3hol_WwrA03NtrmlVURuUbnV")
 
+# 임계값은 model_config.json / model_config2.json을 단일 소스로 사용
+with open(os.path.join(_BASE_DIR, "model_config.json"), encoding="utf-8") as f:
+    ATOPY_THRESHOLD = json.load(f)["threshold"]
+with open(os.path.join(_BASE_DIR, "model_config2.json"), encoding="utf-8") as f:
+    IGA_THRESHOLD = json.load(f)["threshold"]
+
 # 모델 로딩
 @st.cache_resource
 def load_risk_model(): return joblib.load("atopy_service_model.joblib")
@@ -381,7 +387,7 @@ if 'img_result' not in st.session_state: st.session_state.img_result = None
 # 1. 인증 화면 (로그인 / 회원가입)
 # ==========================================
 def apply_auth_css():
-    bg_img_path = os.path.join(_BASE_DIR, "design", "mainlog-Photoroom.png")
+    bg_img_path = os.path.join(_BASE_DIR, "design", "mainlog.png")
     bg_b64 = ""
     if os.path.exists(bg_img_path):
         with open(bg_img_path, "rb") as f:
@@ -1601,7 +1607,21 @@ def render_survey():
                     "rural_years": rural_years, "outdoor_avg": outdoor_avg,
                 }])
 
-                prob = float(risk_model.predict_proba(input_df)[0, 1])
+                # 모델 학습 시 인코딩(1=해당 위험요인 있음, atopy_service_model_coefficients.csv로 확인)은
+                # 위 화면 표시용 딕셔너리(0=예)와 반대라 여기서만 뒤집어서 모델에 전달한다.
+                # 항생제 복용 횟수도 학습 데이터 원본 코드가 1~4(없음=1)라 화면용 AB_MAP(0~3)과 다르다.
+                model_yn = {"예": 1, "아니오": 0}
+                AB_MAP_MODEL = {"없음 (0회)": 1, "1~2회": 2, "3~4회": 3, "5회 이상": 4}
+                model_input_df = pd.DataFrame([{
+                    "antibiotic": AB_MAP_MODEL[antibiotic], "parent_AD": model_yn[parent_AD],
+                    "parent_AR": model_yn[parent_AR], "mold_ever": model_yn[mold_ever],
+                    "parent_asthma": model_yn[parent_asthma], "sibling_allergy": model_yn[sibling_allergy],
+                    "pet_ever": model_yn[pet_ever], "passive_smoke_ever": model_yn[passive_smoke_ever],
+                    "child_passive_smoke": model_yn[child_passive_smoke],
+                    "rural_years": rural_years, "outdoor_avg": outdoor_avg,
+                }])
+
+                prob = float(risk_model.predict_proba(model_input_df)[0, 1])
                 if prob < 0.13:   level = "저위험"
                 elif prob < 0.20: level = "중위험"
                 else:             level = "고위험"
@@ -1706,7 +1726,10 @@ def render_image_scan():
                 with st.spinner("AI가 이미지를 분석하고 있습니다..."):
                     if GRADCAM_OK:
                         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                        gc_result = predict_with_gradcam(img, image_model, iga_model, device=device)
+                        gc_result = predict_with_gradcam(
+                            img, image_model, iga_model, device=device,
+                            atopy_threshold=ATOPY_THRESHOLD, severity_threshold=IGA_THRESHOLD,
+                        )
                         atopy_prob = gc_result["atopy_prob"]
                         is_atopy   = gc_result["is_atopy"]
                         iga_prob   = gc_result["severity_prob"]
@@ -1724,14 +1747,14 @@ def render_image_scan():
                             logits = image_model(tensor)
                             probs  = torch.softmax(logits, dim=1)[0]
                         atopy_prob = float(probs[1])
-                        is_atopy   = atopy_prob >= 0.29
+                        is_atopy   = atopy_prob >= ATOPY_THRESHOLD
                         iga_prob, iga_severe = None, None
                         if is_atopy:
                             with torch.no_grad():
                                 iga_logits = iga_model(tensor)
                                 iga_probs  = torch.softmax(iga_logits, dim=1)[0]
                             iga_prob   = float(iga_probs[1])
-                            iga_severe = iga_prob >= 0.38
+                            iga_severe = iga_prob >= IGA_THRESHOLD
                         st.session_state.gradcam_a = None
 
                     st.session_state.img_result = {

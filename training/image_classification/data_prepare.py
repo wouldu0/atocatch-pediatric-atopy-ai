@@ -1,3 +1,8 @@
+"""
+data_split.py 실행 직후, 같은 세션에서 이어서 실행할 것.
+train_p/train_l/val_p/val_l/test_p/test_l은 data_split.py가 만든 변수를 그대로 사용한다.
+"""
+import os
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
