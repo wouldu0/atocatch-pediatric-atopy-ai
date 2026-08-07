@@ -51,7 +51,7 @@
 | 🔍 **피부 이미지 분석** | EfficientNetV2-S — 아토피 유무 이진 분류 |
 | 📊 **IGA 중증도 분류** | mild vs. moderate~severe 2단계 분류 |
 | 🌡️ **Grad-CAM 히트맵** | 모델이 주목한 피부 부위 시각화 |
-| 📋 **설문 위험도 예측** | 9가지 유전·환경 인자 기반 아토피 발병 위험도 |
+| 📋 **설문 위험도 예측** | 11개 유전·환경 변수 기반 아토피 발병 위험도 |
 | 🤖 **AI 챗봇 상담** | 임상 가이드라인 기반 RAG 아토피 전문 챗봇 |
 | 📄 **리포트 출력** | HTML 형식 분석 결과 보고서 다운로드 |
 | 📅 **기록 관리** | 회원별 진단 이력 조회 (최근 50건) |
@@ -90,11 +90,16 @@
 
 | 모델 설정 | |
 |---|---|
-| 알고리즘 | Logistic Regression |
-| 입력 변수 | 11개 이진/연속 변수 (항생제 복용, 부모 아토피·비염·천식, 형제자매 알레르기, 반려동물, 층간 곰팡이, 간접흡연 등) |
+| 알고리즘 | Logistic Regression (`C=0.01`, `max_iter=3000`) — 배포된 `atopy_service_model.joblib`을 직접 로드해 확인 |
+| 전처리 | 범주형 9개: 최빈값 대치 + One-Hot, 연속형 2개(`rural_years`, `outdoor_avg`): 중앙값 대치 + 표준화 |
+| 입력 변수 | 11개 변수 (범주형 9개 + 연속형 2개: `rural_years`, `outdoor_avg`) |
 | 위험도 표시 | 예측 확률 기준 **저위험(<13%) · 중위험(13~20%) · 고위험(≥20%)** 3단계 ([app_main.py](app/app_main.py)) |
 
-> ⚠️ `training/survey_model/`에는 피처 가공 스크립트(`train_features.py`)와 실험용 XGBoost 비교(`train_xgboost.py`)만 포함되어 있습니다. 배포된 `atopy_service_model.joblib`을 실제로 학습·보정한 스크립트는 현재 레포에 없어 재현 스크립트가 누락된 상태입니다.
+> ⚠️ **Isotonic Calibration 관련 정정**: 사업계획서에는 이 모델에 Isotonic Calibration이 적용됐다고 되어 있지만, 배포된 `atopy_service_model.joblib`을 직접 로드해 확인한 결과 보정 단계 없는 순수 `LogisticRegression`입니다. 위 표는 joblib 내부를 직접 읽어 확인한 값으로 정정했습니다.
+>
+> **Threshold 0.12 / Recall 0.7667 관련**: threshold·recall은 학습된 `LogisticRegression` 객체 자체에는 저장되지 않는 값이라 joblib에서 직접 확인할 방법이 없습니다. `backup/data/feature_selection_outputs/`, `model_results(log)/` 등 로컬에 남아있는 평가 산출물을 전부 확인했지만 이 11개 변수 모델에 대한 threshold·recall 기록은 찾지 못했습니다 (0.12/0.7667이라는 숫자 자체는 사업계획서 PPT에 있지만, 그건 확인 결과 다른 인구집단·변수셋을 쓰는 별개 모델의 수치였습니다 — 위 "설문 위험도 모델" 서두 참고). 따라서 근거를 못 찾은 채로 이 모델의 확정 성능처럼 적지 않았습니다.
+>
+> `training/survey_model/reconstruct_survey_model.py`는 저장된 배포 모델(joblib)에서 확인한 전처리·모델 구조를 그대로 재구성해 `pskc_final.csv` 전체로 다시 학습합니다. **계수의 부호와 상대적 크기는 배포본과 일치하지만 절대값은 정확히 일치하지 않습니다** — 원 학습에 쓰인 train/test split과 random seed 기록이 남아있지 않아(11개 변수 모두 결측률 27~34%) 완전히 동일한 계수 재현은 보장하지 않습니다. 기존 `atopy_service_model.joblib`은 덮어쓰지 않았고, 재구성 결과는 별도 파일로 저장됩니다.
 
 ### 🧪 탐색적 분석: 생존분석 (서비스 미채택)
 
@@ -158,6 +163,7 @@ AtoCatch/
     │   ├── train_features.py         # 설문 피처 가공 (pskc_final.csv 생성 — 모델 학습은 하지 않음)
     │   ├── train_xgboost.py          # XGBoost 비교 실험
     │   ├── eval_logistic_v2.py       # 로지스틱 회귀 v1/v2 변수셋 비교 (statsmodels OR·CI·p-value)
+    │   ├── reconstruct_survey_model.py  # 배포 joblib에서 확인한 구조로 재구성 학습 (exact reproduction 아님, 위 설문 모델 절 참고)
     │   ├── data_merge.py             # 차수별 원시 데이터 병합 (merged.csv)
     │   ├── data_build_ad_history.py  # 차수별 아토피 진단 이력 구축 (pskc_ad_history.csv)
     │   └── eval_univariate.py        # 단변량 분석
@@ -168,9 +174,9 @@ AtoCatch/
         └── results/                          # Cox/Log-rank 결과, KM·Forest plot
 ```
 
-> ⚠️ **재현 스크립트 누락 2건**
-> - 설문 위험도 모델(`atopy_service_model.joblib`)을 실제로 학습·보정(Isotonic Calibration, 임계값 선정)한 스크립트가 레포에 없습니다. `eval_logistic_v2.py`가 같은 데이터로 만든 가장 가까운 로지스틱 분석이지만 변수 구성이 다르고 보정·저장 단계가 없어 완전히 같은 파이프라인은 아닙니다.
-> - IGA 중증도 모델(`best_iga_model.pth`, `tf_efficientnetv2_s`)을 실제로 학습한 스크립트도 레포에 없습니다. `data_matching.py`에 AI Hub 원본 데이터에서 IGA 등급을 라벨링하는 전처리 코드는 있지만, 그 라벨로 모델을 학습하는 스크립트는 찾지 못했습니다.
+> ⚠️ **재현 스크립트 관련**
+> - 설문 위험도 모델: 배포된 `atopy_service_model.joblib`을 직접 로드해 파이프라인 구조(전처리 + `LogisticRegression(C=0.01)`)를 확인했고, `training/survey_model/reconstruct_survey_model.py`가 그 구조로 재구성 학습을 시도합니다. 원 학습에 쓰인 train/test split·random seed 기록이 남아있지 않아 exact reproduction은 아닙니다 (자세한 내용은 위 "설문 위험도 모델" 절 참고).
+> - IGA 중증도 모델(`best_iga_model.pth`)을 실제로 학습한 스크립트는 이 레포에도, 관련된 다른 로컬 프로젝트 폴더에도 없었습니다. **확인된 것**: `tf_efficientnetv2_s(num_classes=2)`에 `strict=True`로 정상 로드됨(아키텍처·출력 클래스 수 일치), `data_matching.py`에 AI Hub 데이터에서 IGA 등급을 라벨링하는 전처리 코드 존재. **확인 안 된 것(추정하지 않음)**: optimizer, learning rate, loss, scheduler, augmentation, train/val/test split, random seed, epoch 수, class weighting 여부. 원 학습 스크립트를 찾을 때까지 이 모델을 재현하는 학습 코드는 추가하지 않습니다 — 아키텍처만 보고 학습 설정을 추정해서 만든 코드는 `best_iga_model.pth`의 재현이 아니라 별개의 새 구현이기 때문입니다.
 
 ---
 
@@ -225,7 +231,7 @@ streamlit run app/app_main.py
 |------|------|
 | Frontend | Streamlit |
 | 딥러닝 | PyTorch, timm (EfficientNetV2-S) |
-| 머신러닝 | scikit-learn (Logistic Regression + Isotonic Calibration) |
+| 머신러닝 | scikit-learn (Logistic Regression) |
 | AI 챗봇 | OpenAI API + RAG |
 | 시각화 | Grad-CAM, Plotly |
 | 배포 | Streamlit Community Cloud |
