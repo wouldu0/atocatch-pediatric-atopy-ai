@@ -79,7 +79,7 @@
 >
 > ⚠️ **AI Hub 데이터 subject-level 중복 가능성**: AI Hub 라벨 데이터는 `정면`/`측면` 두 각도로 촬영되어 있으나, 원본 subject identifier를 보유하고 있지 않아 동일 아동의 이미지가 train/val/test split 간에 중복되었는지 검증할 수 없었습니다.
 
-### 📋 설문 위험도 모델 (Logistic Regression)
+### 📋 설문 위험도 모델 (Logistic Regression) — 배포 서비스 모델 (Original)
 
 한국아동패널 데이터 N=1,967명 기반으로, 6차 시점(영유아기) 유전·환경 요인으로 7~10차 아토피 신규 발생을 예측합니다.
 
@@ -106,7 +106,32 @@
 >
 > ✅ **원본 학습 스크립트를 찾아 검증 완료**: `training/survey_model/train_final_service_model.py`가 `atopy_service_model.joblib`을 실제로 만든 원본 스크립트입니다. 직접 재실행해 배포본과 계수를 대조한 결과 **최대 절대 오차 2.9×10⁻¹⁶(부동소수점 수준)으로 완전히 일치**하고, Threshold 0.12에서 Test Recall도 정확히 0.7667로 재현됩니다. 위 표의 수치는 전부 이 재실행 결과입니다.
 >
-> ⚠️ **단, 이 검증은 "코드가 배포본을 정확히 재현하는가"만 확인한 것입니다.** `[1]~[6]` 파생변수 단계의 아토피 진단(Y) 정의 자체는 별도로 한국아동패널 공식 코드북과 대조 중이며, 8~9차 결측 처리 등에서 코호트 정의 오류 가능성이 발견되어 재검토하고 있습니다 — 재검토 결과에 따라 위 수치들이 바뀔 수 있습니다.
+> ⚠️ **단, 이 검증은 "코드가 배포본을 정확히 재현하는가"만 확인한 것입니다.** `[1]~[6]` 파생변수 단계의 아토피 진단(Y) 정의 자체를 한국아동패널 공식 코드북과 대조한 결과 코호트 정의에 문제가 있었습니다 — 아래 "사후 방법론 검증" 참고. 위 표의 수치는 **배포 당시 Y 정의 기준 값이며, 서비스 모델은 그대로 유지**하고 있습니다.
+
+<details>
+<summary><b>🔎 사후 방법론 검증: Outcome(Y) 정의 재검토 (Post-hoc audit, not deployed)</b></summary>
+
+배포 이후 진행한 코드 재검토에서, 서비스 모델의 Y(7~10차 신규 아토피 발생) 정의에 결측 처리 문제가 있는 것을 발견했습니다. **아래 내용은 방법론적 검증 목적이며, 배포된 서비스 모델(`atopy_service_model.joblib`, threshold 0.12)에는 반영하지 않았습니다.**
+
+**발견한 문제**
+- 8차(`KCh15adx004`)·9차(`KCh16adx004`)는 코드북상 `1=예 / 2=아니오 / 99999999=무응답`으로 명확한 문항인데, 기존 전처리는 "1이 아니면 전부 0(미진단)"으로 처리하고 있었습니다.
+- 추적 상태를 엄격히 구분(각 차수 조사 참여 여부까지 확인)한 결과, 기존 Y=0(1,666명) 중 **430명(25.8%)은 7~10차 어디에서도 outcome을 확인할 충분한 follow-up 정보가 없는** 상태였습니다. 이들을 outcome-unknown으로 제외하면 분석대상은 1,967 → 1,537명이 됩니다.
+- 9차(코드북상 가장 명확한 1/2/무응답 구조)의 명시적 응답만 사용한 별도 분석은 N=1,306입니다.
+- 7·10차는 문항 형식이 달라(체크리스트·진단연도 기입형) 참여 여부 변수(`DCh14hlt021`, `JCh17int001`)로 "그 회차 조사에 참여했다"까지는 확인했지만, "무응답=미진단"이라는 skip-logic 자체를 코드북에서 직접 확인하지는 못했습니다. 그래서 7·10차 기반 음성 라벨은 `observed_negative`(운영적 정의)로, 8·9차만 쓰는 9차 단독 분석이 방법론적으로 가장 신뢰도가 높습니다.
+
+**재학습 결과 비교** (`training/survey_model/train_corrected_outcome_model.py`, threshold는 각 버전마다 validation에서 새로 탐색 — 기존 0.12를 재사용하지 않음)
+
+| 분석 | N | AUC |
+|---|---|---|
+| 배포 서비스 모델 (Original) | 1,967 | 0.629 |
+| 7~10차 엄격 추적 검토 (Sensitivity) | 1,537 | 0.555 |
+| 9차 명시적 응답만 사용 (Primary) | 1,306 | 0.575 |
+
+**결론**: 더 엄격한 outcome 정의에서는 AUC가 감소하여, 기존 모델의 예측 성능이 outcome missing 처리 방식에 영향을 받았을 가능성을 확인했습니다. 다만 N·발생률·대상자 구성이 함께 바뀌었기 때문에, "기존 모델이 잘못된 라벨 덕분에 성능이 높았다"고 단정할 수는 없습니다 — label 수정 효과와 cohort 변화 효과가 섞여 있습니다.
+
+outcome-unknown으로 분류된 430명은 6차 시점 예측변수 결측률도 ~92%로 전반적인 추적 탈락 패턴과 일치했습니다. 다만 추적 탈락이 무작위라는 것을 입증할 수는 없어, attrition bias 가능성은 남아 있습니다.
+
+</details>
 
 ### 🧪 탐색적 분석: 생존분석 (서비스 미채택)
 
@@ -171,6 +196,7 @@ AtoCatch/
     │   ├── train_xgboost.py          # XGBoost 비교 실험
     │   ├── eval_logistic_v2.py       # 로지스틱 회귀 v1/v2 변수셋 비교 (statsmodels OR·CI·p-value)
     │   ├── train_final_service_model.py # atopy_service_model.joblib 원본 학습 스크립트 (배포본과 계수 bit-exact 일치 확인, 위 설문 모델 절 참고)
+    │   ├── train_corrected_outcome_model.py # 사후 방법론 검증용 재학습 (서비스 미적용, "🔎 사후 방법론 검증" 참고)
     │   ├── data_merge.py             # 차수별 원시 데이터 병합 (merged.csv)
     │   ├── data_build_ad_history.py  # 차수별 아토피 진단 이력 구축 (pskc_ad_history.csv)
     │   └── eval_univariate.py        # 단변량 분석
@@ -182,7 +208,7 @@ AtoCatch/
 ```
 
 > ⚠️ **재현 스크립트 관련**
-> - 설문 위험도 모델: `training/survey_model/train_final_service_model.py`가 `atopy_service_model.joblib`을 실제로 만든 원본 스크립트로 확인됐습니다 (계수 bit-exact 일치, 자세한 내용은 위 "설문 위험도 모델" 절 참고). 다만 이 스크립트의 Y(아토피 발생) 정의 자체는 코드북 대조 재검토 중입니다.
+> - 설문 위험도 모델: `training/survey_model/train_final_service_model.py`가 `atopy_service_model.joblib`을 실제로 만든 원본 스크립트로 확인됐습니다 (계수 bit-exact 일치). 이 스크립트의 Y(아토피 발생) 정의를 코드북과 대조해 문제를 발견했고, `train_corrected_outcome_model.py`로 별도 재검증했습니다 — 서비스 모델에는 반영하지 않았습니다 (자세한 내용은 위 "🔎 사후 방법론 검증" 참고).
 > - IGA 중증도 모델(`best_iga_model.pth`)을 실제로 학습한 스크립트는 이 레포에도, 관련된 다른 로컬 프로젝트 폴더에도 없었습니다. **확인된 것**: `tf_efficientnetv2_s(num_classes=2)`에 `strict=True`로 정상 로드됨(아키텍처·출력 클래스 수 일치), `data_matching.py`에 AI Hub 데이터에서 IGA 등급을 라벨링하는 전처리 코드 존재. **확인 안 된 것(추정하지 않음)**: optimizer, learning rate, loss, scheduler, augmentation, train/val/test split, random seed, epoch 수, class weighting 여부. 원 학습 스크립트를 찾을 때까지 이 모델을 재현하는 학습 코드는 추가하지 않습니다 — 아키텍처만 보고 학습 설정을 추정해서 만든 코드는 `best_iga_model.pth`의 재현이 아니라 별개의 새 구현이기 때문입니다.
 
 ---
@@ -242,6 +268,15 @@ streamlit run app/app_main.py
 | AI 챗봇 | OpenAI API + RAG |
 | 시각화 | Grad-CAM, Plotly |
 | 배포 | Streamlit Community Cloud |
+
+---
+
+## ⚠️ Limitations
+
+- **설문 위험도 모델 — outcome 추적 결측**: 배포 모델의 outcome(7~10차 신규 아토피 발생) 정의를 코드북과 대조한 결과, 기존 Y=0 중 25.8%(430명)는 추적 정보가 불충분한 상태로 미진단 처리되어 있었습니다. 사후 검증에서 더 엄격한 정의로 재분석하면 AUC가 낮아집니다 (자세한 내용은 위 "🔎 사후 방법론 검증" 참고). 이 재검증은 서비스 모델에는 반영하지 않았습니다.
+- **위와 같은 이유로 outcome-unknown 제외 표본의 attrition bias 가능성**: 제외된 430명이 6차 예측변수 결측률도 높아 전반적 추적 탈락으로 보이지만, 추적 탈락이 무작위임을 통계적으로 입증하지는 못했습니다.
+- **이미지 모델 — 평가셋 재사용**: DermNet holdout(약 105~108장)이 아키텍처 선택·threshold 선택·최종 성능 보고에 반복 사용되어, 보고된 80.6%는 완전히 독립적인 external test 성능이 아닙니다.
+- **이미지 모델 — subject-level 중복 가능성**: AI Hub 데이터는 정면·측면 두 각도로 촬영되어 있으나 원본 subject identifier가 없어, 동일 아동의 이미지가 train/val/test split 간에 중복되었는지 검증하지 못했습니다.
 
 ---
 
