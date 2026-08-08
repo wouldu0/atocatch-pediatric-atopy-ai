@@ -153,7 +153,7 @@ def predict_with_gradcam(
     model_a: torch.nn.Module,
     model_b: torch.nn.Module,
     device=None,
-    atopy_threshold: float = 0.29,
+    atopy_threshold: float = 0.2739,
     severity_threshold: float = 0.38,
     overlay_alpha: float = 0.45,
 ) -> dict:

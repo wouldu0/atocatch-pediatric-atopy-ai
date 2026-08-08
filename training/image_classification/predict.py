@@ -4,8 +4,8 @@ from torchvision import transforms
 from PIL import Image
 
 # ── 설정 ──
-MODEL_PATH = r"E:\atopic\models\comparison\tf_efficientnetv2_s\best_model.pth"
-THRESHOLD = 0.29  # Youden's J 최적값
+MODEL_PATH = r"E:\atopic\models\binary_grouped_split\tf_efficientnetv2_s\best_model.pth"
+THRESHOLD = 0.2739  # Youden's J 최적값 (base-id 그룹 보존 split으로 재학습한 모델 기준)
 IMG_SIZE = 224
 LABEL_NAMES = ["non_atopy", "atopy"]
 

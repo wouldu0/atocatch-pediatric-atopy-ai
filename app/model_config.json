@@ -1,6 +1,6 @@
 {
   "model_name": "tf_efficientnetv2_s",
-  "threshold": 0.29,
+  "threshold": 0.2739,
   "num_classes": 2,
   "img_size": 224,
   "label_names": [
@@ -8,11 +8,19 @@
     "atopy"
   ],
   "task": "atopy_binary_classification",
+  "training_note": "AI Hub base-id 그룹을 보존하는 patient-level split으로 재학습 (기존 랜덤 split의 leakage 수정, 2026-08-08)",
   "external_performance": {
-    "accuracy": 0.8056,
-    "f1": 0.811,
-    "auc": 0.8283,
-    "sensitivity": 0.6923,
-    "specificity": 0.8415
+    "accuracy": 0.7963,
+    "f1": 0.8093,
+    "auc": 0.8391,
+    "sensitivity": 0.8846,
+    "specificity": 0.7683
+  },
+  "internal_performance": {
+    "accuracy": 0.9511,
+    "f1": 0.9511,
+    "auc": 0.9874,
+    "sensitivity": 0.9286,
+    "specificity": 0.9731
   }
 }
