@@ -11,17 +11,23 @@ evaluate, run_experiment)를 그대로 import해서 재사용하고, 데이터 s
 부분만 make_grouped_split.py의 grouped_train_val_test_split()으로 교체한다.
 모델 구조/augmentation/loss/optimizer는 전혀 건드리지 않음.
 
-배포된 기존 모델(E:\\atopic\\models\\comparison\\tf_efficientnetv2_s\\best_model.pth)과
-backup/ 안의 산출물은 절대 건드리지 않고, 결과는 전부
-E:\\atopic\\models\\binary_grouped_split\\ 에 새로 저장한다.
+배포된 기존 모델(comparison/tf_efficientnetv2_s/best_model.pth)과 backup/ 안의
+산출물은 절대 건드리지 않고, 결과는 전부 별도 OUTPUT_DIR에 새로 저장한다.
+
+경로: eval_comparison.py / make_grouped_split.py는 이 스크립트와 같은 폴더에
+있다는 전제로 저장소 루트 기준 상대경로를 쓴다 (개인 PC 절대경로 없음).
+AI Hub/DermNet 원본 데이터 루트만 Config()(eval_comparison.py) 쪽에서
+본인 환경에 맞게 수정할 것 — 이 저장소에 포함되지 않는 외부 대용량 데이터라
+상대경로로 고정할 수 없다.
 """
 import os
 import sys
 import json
 import random
+from pathlib import Path
 
-REPO_TRAIN_DIR = r"C:\Users\asia\contest_AtoCatch\training\image_classification"  # ← 본인 경로로 수정 (eval_comparison.py, make_grouped_split.py가 있는 폴더)
-sys.path.insert(0, REPO_TRAIN_DIR)
+BASE_DIR = Path(__file__).resolve().parent  # training/image_classification/
+sys.path.insert(0, str(BASE_DIR))
 
 import torch
 import numpy as np
@@ -34,7 +40,7 @@ from eval_comparison import (
 )
 from make_grouped_split import grouped_train_val_test_split
 
-OUTPUT_DIR = r"E:\atopic\models\binary_grouped_split"
+OUTPUT_DIR = str(BASE_DIR / "outputs" / "binary_grouped_split")  # ← 필요하면 본인 경로로 수정
 MODEL_NAME = "tf_efficientnetv2_s"
 
 
