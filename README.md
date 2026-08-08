@@ -238,16 +238,9 @@ AtoCatch/
 
 ## 🚀 빠른 시작
 
-### 1. 모델 가중치 다운로드
+### 1. 클론
 
-`.pth` 파일은 용량 문제로 GitHub에 포함되지 않습니다. `app/` 디렉토리에 위치시켜 주세요.
-
-| 파일 | 용도 | 링크 |
-|------|------|------|
-| `best_model.pth` | 아토피 유무 분류 | [Google Drive](https://drive.google.com/file/d/1khrt-QelCpdcf8PbDCvMb5kVnRc2evP5/view) |
-| `best_iga_model.pth` | IGA 중증도 분류 | [Google Drive](https://drive.google.com/file/d/1VydTQalT3hol_WwrA03NtrmlVURuUbnV/view) |
-
-> Streamlit Cloud 배포 시에는 앱 실행 중 자동으로 다운로드됩니다.
+`best_model.pth`(아토피 유무 분류), `best_iga_model.pth`(IGA 중증도 분류) 둘 다 `app/` 폴더에 레포와 함께 커밋되어 있어 별도 다운로드가 필요 없습니다 (각 77.8MB, GitHub 100MB 하드 리밋 이내).
 
 ### 2. 환경 설정
 

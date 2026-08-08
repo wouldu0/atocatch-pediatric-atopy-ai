@@ -300,17 +300,9 @@ def generate_html_report(display_name, time_str, detail, image_b64=None, gradcam
     """
     return html_content
 
-# 모델 파일 자동 다운로드 (Streamlit Cloud 배포용)
-def _download_model_if_needed(path, gdrive_id):
-    if not os.path.exists(path):
-        try:
-            import gdown
-            gdown.download(f"https://drive.google.com/uc?id={gdrive_id}", path, quiet=False)
-        except Exception as e:
-            st.warning(f"모델 다운로드 실패: {e}")
-
-_download_model_if_needed("best_model.pth", "1khrt-QelCpdcf8PbDCvMb5kVnRc2evP5")
-_download_model_if_needed("best_iga_model.pth", "1VydTQalT3hol_WwrA03NtrmlVURuUbnV")
+# 모델 가중치는 app/ 폴더에 함께 커밋되어 있음 (Google Drive 다운로드 방식 폐기)
+_MODEL_PATH = os.path.join(_BASE_DIR, "best_model.pth")
+_IGA_MODEL_PATH = os.path.join(_BASE_DIR, "best_iga_model.pth")
 
 # 임계값은 model_config.json / model_config2.json을 단일 소스로 사용
 with open(os.path.join(_BASE_DIR, "model_config.json"), encoding="utf-8") as f:
@@ -320,23 +312,19 @@ with open(os.path.join(_BASE_DIR, "model_config2.json"), encoding="utf-8") as f:
 
 # 모델 로딩
 @st.cache_resource
-def load_risk_model(): return joblib.load("atopy_service_model.joblib")
+def load_risk_model(): return joblib.load(os.path.join(_BASE_DIR, "atopy_service_model.joblib"))
 
 @st.cache_resource
 def load_image_model():
     m = timm.create_model('tf_efficientnetv2_s', pretrained=False, num_classes=2)
-    try:
-        m.load_state_dict(torch.load("best_model.pth", map_location="cpu"))
-    except: pass
+    m.load_state_dict(torch.load(_MODEL_PATH, map_location="cpu"))
     m.eval()
     return m
 
 @st.cache_resource
 def load_iga_model():
     m = timm.create_model('tf_efficientnetv2_s', pretrained=False, num_classes=2)
-    try:
-        m.load_state_dict(torch.load("best_iga_model.pth", map_location="cpu"))
-    except: pass
+    m.load_state_dict(torch.load(_IGA_MODEL_PATH, map_location="cpu"))
     m.eval()
     return m
 
