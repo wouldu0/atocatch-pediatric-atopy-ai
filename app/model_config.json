@@ -8,8 +8,8 @@
     "atopy"
   ],
   "task": "atopy_binary_classification",
-  "training_note": "AI Hub base-id 그룹을 보존하는 patient-level split으로 재학습 (기존 랜덤 split의 leakage 수정, 2026-08-08)",
-  "external_performance": {
+  "training_note": "AI Hub base-id 그룹을 보존하는 group-preserving split으로 재학습 (기존 랜덤 split의 leakage 수정, 2026-08-08). training/image_classification/train_binary_grouped_final.py 참고",
+  "dermnet_holdout_performance": {
     "accuracy": 0.7963,
     "f1": 0.8093,
     "auc": 0.8391,

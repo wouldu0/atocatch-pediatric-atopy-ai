@@ -71,8 +71,10 @@
 | **Specificity** | 76.8% | 64.3% |
 | **Threshold** | 0.274 (Youden's J) | 0.38 (F1 최적) |
 | Internal Acc/F1/AUC | 95.1% / 95.1% / 0.987 | — |
-| 학습 데이터 | AI Hub 합성 2,663장(그룹 보존 split) + DermNet 157장 | AI Hub IGA 라벨 1,800장 |
-| 평가 데이터 | DermNet 실제 이미지 홀드아웃(108장) | 합성 데이터 내부 검증 |
+| 학습 데이터 | AI Hub 합성 2,663장(base-id 그룹 보존 split) + DermNet 157장 | AI Hub IGA 라벨 1,800장 |
+| 평가 데이터 | DermNet holdout(108장) | 합성 데이터 내부 검증 |
+
+> ℹ️ 위 Accuracy/F1/AUC/Sensitivity/Specificity는 전부 **DermNet holdout 기준**입니다 (완전히 독립된 external test가 아님 — 바로 아래 한계 설명 참고).
 
 > 🔑 **핵심 인사이트**: 합성 데이터 단독 내부 성능 95.8% → 실제 이미지(DermNet 265장) 평가 62.6%로 급락.  
 > DermNet 실제 이미지 157장을 학습에 믹싱하면 나머지 108장 홀드아웃 기준 Acc가 76.9%까지 **+14.2%p** 향상 (도메인 갭 공략 — 믹싱 전후 홀드아웃 크기가 달라 참고용 수치입니다)
@@ -80,21 +82,21 @@
 > ⚠️ **"외부 검증"이 아니라 "DermNet holdout 평가"로 정정**: DermNet holdout set을 활용해 실제 피부 이미지에서의 domain gap을 확인하고 모델 구조 및 threshold를 탐색했습니다. **동일한 holdout set이 모델 선택(`eval_comparison.py`)과 threshold 설정(`utils_threshold.py`)에도 사용되어**, 위 표의 수치는 완전히 독립적인 external test 성능으로 해석할 수 없습니다. "5개 아키텍처 중 최고 성능을 낸 모델을, 같은 데이터로 최적 threshold까지 고른 뒤, 같은 데이터로 다시 평가한 결과"라는 한계가 있습니다.
 
 <details>
-<summary><b>🔎 사후 방법론 검증: AI Hub subject-level leakage 재학습 (2026-08-08 반영, 배포 모델 교체됨)</b></summary>
+<summary><b>🔎 사후 방법론 검증: AI Hub base-id 그룹 leakage 재학습 (2026-08-08 반영, 배포 모델 교체됨)</b></summary>
 
-AI Hub 라벨 데이터의 `정면`/`측면` 폴더가 실제로는 같은 아동을 두 각도로 찍은 게 아니라(각 JSON의 `generated_parameters`가 파일마다 랜덤 배정되고, 두 폴더의 ID 풀이 아예 안 겹침) 진단 파라미터 기반으로 생성된 별개의 합성 이미지라는 것을 확인했습니다. 대신 **`정면` 폴더 내부에서 같은 base-id가 신체부위(P)·병변(L) 코드만 다르게 여러 장 존재하는 실제 중복 패턴**을 발견했습니다 — 이 그룹 중 46개(전체 아토피 이미지 풀의 5.33%, 96장)가 기존 `data_split.py`의 순수 랜덤 분할에서 train/val/test에 걸쳐 나뉘어 있었고, 그중 16개 그룹은 train과 test에 동시에 걸쳐 있었습니다(직접적인 test leakage).
+AI Hub 라벨 데이터의 `정면`/`측면` 폴더가 실제로는 같은 아동을 두 각도로 찍은 게 아니라(각 JSON의 `generated_parameters`가 파일마다 랜덤 배정되고, 두 폴더의 ID 풀이 아예 안 겹침) 진단 파라미터 기반으로 생성된 별개의 합성 이미지라는 것을 확인했습니다. 대신 **`정면` 폴더 내부에서 같은 base-id가 신체부위(P)·병변(L) 코드만 다르게 여러 장 존재하는 실제 중복 패턴**을 발견했습니다 — 같은 합성 케이스를 다른 신체 부위/병변으로 렌더링한 것으로 추정되며, 실제 동일 "환자"라는 원본 메타데이터로 증명된 것은 아니라 subject-level이 아니라 **base-id group-preserving split**이라고 부릅니다. 이 그룹 중 46개(전체 아토피 이미지 풀의 5.33%, 96장)가 기존 `data_split.py`의 순수 랜덤 분할에서 train/val/test에 걸쳐 나뉘어 있었고, 그중 16개 그룹은 train과 test에 동시에 걸쳐 있었습니다(직접적인 test leakage).
 
-`training/image_classification/check_aihub_subject_leakage.py`로 위 사실을 확인하고, `make_grouped_split.py`(base-id 그룹을 절대 쪼개지 않는 GroupShuffleSplit)로 같은 아키텍처(tf_efficientnetv2_s)를 재학습했습니다.
+`training/image_classification/check_aihub_subject_leakage.py`로 위 사실을 확인하고, `make_grouped_split.py`(base-id 그룹을 절대 쪼개지 않는 GroupShuffleSplit)로 같은 아키텍처(tf_efficientnetv2_s)를 재학습했습니다 — 전체 재학습 과정은 `training/image_classification/train_binary_grouped_final.py`에 있습니다 (`eval_comparison.py`의 학습 루프를 그대로 재사용하고 데이터 split만 교체).
 
 | | 기존(랜덤 split, leakage 있음) | 재학습(그룹 보존 split) |
 |---|---|---|
-| External Acc | 80.6% | 79.6% |
-| External F1 | 81.1% | 80.9% |
-| External AUC | 0.828 | **0.839** |
-| External Sensitivity | 69.2% | **88.5%** |
+| DermNet holdout Acc | 80.6% | 79.6% |
+| DermNet holdout F1 | 81.1% | 80.9% |
+| DermNet holdout AUC | 0.828 | **0.839** |
+| DermNet holdout Sensitivity | 69.2% | **88.5%** |
 | Threshold | 0.29 | 0.274 |
 
-**결론**: leakage를 고쳐도 DermNet 외부 성능은 무너지지 않았습니다 — Acc/F1은 거의 동일(±1%p), AUC는 소폭 상승, Sensitivity는 크게 개선됐습니다. leakage는 AI Hub 내부 train/val/test 사이에서만 발생했고 DermNet은 애초에 AI Hub와 완전히 별개 소스라 이 leakage와 무관했기 때문으로 해석됩니다. 즉 기존 배포 모델의 DermNet 성능이 "leakage 때문에 부풀려진 착시"는 아니었습니다. 재학습된 모델을 검증 후 배포 모델로 교체했습니다 — 위 표(Model 2-A)는 재학습 모델 기준입니다.
+**결론**: leakage를 고쳐도 DermNet holdout 성능은 무너지지 않았습니다 — Acc/F1은 거의 동일(±1%p), AUC는 소폭 상승, Sensitivity는 크게 개선됐습니다. leakage는 AI Hub 내부 train/val/test 사이에서만 발생했고 DermNet은 애초에 AI Hub와 완전히 별개 소스라 이 leakage와 무관했기 때문으로 해석됩니다. 즉 기존 배포 모델의 DermNet holdout 성능이 "leakage 때문에 부풀려진 착시"는 아니었습니다. 재학습된 모델을 검증 후 배포 모델로 교체했습니다 — 위 표(Model 2-A)는 재학습 모델 기준입니다.
 
 ⚠️ 이 결과는 seed=42 1회 실행 기준입니다. 그룹 단위 분할이라 클래스 비율이 seed마다 흔들릴 수 있어, 완전한 재현성 검증(다른 seed 반복)은 아직 하지 않았습니다.
 
@@ -201,9 +203,12 @@ AtoCatch/
     ├── image_classification/
     │   ├── train_binary.py               # 아토피 유무 이진 분류 학습 (v1, 합성데이터만)
     │   ├── train_binary_dermnet_mix_v2.py # 이진 분류 학습 v2 (DermNet 믹싱, efficientnet_b0)
-    │   ├── train_binary_final.py         # eval_comparison.py가 만든 tf_efficientnetv2_s 가중치를 DermNet으로 재평가 (학습 아님)
-    │   ├── eval_comparison.py            # 5개 아키텍처 비교 실험 — 여기서 나온 tf_efficientnetv2_s가 실제 배포 모델
-    │   ├── predict.py                    # 단일 이미지 추론 (eval_comparison.py가 만든 tf_efficientnetv2_s 가중치 사용)
+    │   ├── eval_comparison.py            # 5개 아키텍처 비교 실험 (아키텍처 선정용 — 이 실행 자체의 산출물이 배포 모델은 아님, tf_efficientnetv2_s 선정 근거)
+    │   ├── eval_binary_legacy_holdout.py # (구) DermNet 60/40 holdout 재평가 코드. 현재 배포 모델도, threshold(0.29)도 아님 — 참고용
+    │   ├── make_grouped_split.py     # base-id 그룹 보존 split 유틸 (leakage 수정용)
+    │   ├── train_binary_grouped_final.py # 현재 배포 모델(best_model.pth) 실제 학습 스크립트 — eval_comparison.py 학습 루프 재사용 + grouped split 적용
+    │   ├── check_aihub_subject_leakage.py # AI Hub base-id 중복(leakage) 점검
+    │   ├── predict.py                    # 단일 이미지 추론 (현재 배포된 grouped-split 모델 사용)
     │   ├── data_setup.py             # 데이터 초기 설정
     │   ├── data_split.py             # Train/Val/Test 분할
     │   ├── data_split_raw.py         # 원시 데이터 분할 유틸
@@ -211,9 +216,6 @@ AtoCatch/
     │   ├── data_matching.py          # 이미지 매칭
     │   ├── utils_gradcam.py          # Grad-CAM 모듈
     │   ├── utils_threshold.py        # 임계값 최적화 (Youden's J)
-    │   ├── check_aihub_subject_leakage.py # AI Hub base-id 중복(leakage) 점검
-    │   ├── make_grouped_split.py     # base-id 그룹 보존 split 유틸 (leakage 수정용)
-    │   ├── retrain_grouped_binary_leak_fix.py # 실제 재학습 스크립트 (eval_comparison.py 학습 루프 재사용 + grouped split만 교체)
     │   ├── data_crawl_dermnet.py     # DermNet NZ 이미지 크롤러
     ├── survey_model/
     │   ├── train_features.py         # 설문 피처 가공 (pskc_final.csv 생성 — 모델 학습은 하지 않음)
@@ -293,7 +295,7 @@ streamlit run app/app_main.py
 - **설문 위험도 모델 — outcome 추적 결측**: 배포 모델의 outcome(7~10차 신규 아토피 발생) 정의를 코드북과 대조한 결과, 기존 Y=0 중 25.8%(430명)는 추적 정보가 불충분한 상태로 미진단 처리되어 있었습니다. 사후 검증에서 더 엄격한 정의로 재분석하면 AUC가 낮아집니다 (자세한 내용은 위 "🔎 사후 방법론 검증" 참고). 이 재검증은 서비스 모델에는 반영하지 않았습니다.
 - **위와 같은 이유로 outcome-unknown 제외 표본의 attrition bias 가능성**: 제외된 430명이 6차 예측변수 결측률도 높아 전반적 추적 탈락으로 보이지만, 추적 탈락이 무작위임을 통계적으로 입증하지는 못했습니다.
 - **이미지 모델 — 평가셋 재사용**: DermNet holdout(108장)이 아키텍처 선택·threshold 선택·최종 성능 보고에 반복 사용되어, 보고된 수치는 완전히 독립적인 external test 성능이 아닙니다.
-- **이미지 모델 — AI Hub base-id 그룹 재현성 미검증**: subject-level(base-id) 중복은 확인·수정했지만(위 "🔎 사후 방법론 검증" 참고), 그룹 보존 재분할 결과가 seed=42 1회 실행 기준이라 다른 seed에서도 결과가 안정적인지는 아직 확인하지 못했습니다.
+- **이미지 모델 — AI Hub base-id 그룹 재현성 미검증**: base-id 그룹(같은 합성 케이스로 추정, 실제 동일 환자라는 원본 메타데이터 증명은 없음) 중복은 확인·수정했지만(위 "🔎 사후 방법론 검증" 참고), 그룹 보존 재분할 결과가 seed=42 1회 실행 기준이라 다른 seed에서도 결과가 안정적인지는 아직 확인하지 못했습니다.
 
 ---
 
