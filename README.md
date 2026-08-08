@@ -191,7 +191,7 @@ AtoCatch/
 │   ├── app_main.py                   # 메인 앱 (로그인·회원가입·홈·설문·이미지 분석·챗봇·기록 전부 포함)
 │   ├── gradcam_module.py             # Grad-CAM 시각화 모듈
 │   ├── rag_engine.py                 # RAG 챗봇 엔진
-│   ├── model_config.json             # 아토피 유무 모델 메타데이터 (comparison 실험에서 채택된 tf_efficientnetv2_s 성능 기록)
+│   ├── model_config.json             # 현재 배포 아토피 유무 모델의 threshold·성능 메타데이터
 │   ├── model_config2.json            # 중증도 모델 메타데이터
 │   ├── atopy_service_model.joblib    # 설문 위험도 모델 (학습된 결과물 — 학습 코드는 아래 참고)
 │   ├── requirements.txt
