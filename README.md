@@ -80,18 +80,23 @@ AtoCatch는 "아토피가 언제, 누구에게 가장 필요한 서비스인가"
 
 ## 🌐 서비스 흐름
 
-```
-로그인 → 홈
-   ├─ 설문조사 ──────→ Logistic Regression → 저 / 중 / 고위험 3단계
-   └─ 피부 스캔 ──────→ EfficientNetV2-S (아토피 유무) → Grad-CAM
-                              │ 아토피 의심 시
-                              ▼
-                        EfficientNetV2-S (IGA 중증도) → Grad-CAM
-   ↓
-종합 분석 결과 리포트 → AI 챗봇 정보 제공(RAG) / 분석 이력 관리
-```
+로그인 이후 홈 화면은 아래 두 기능으로 들어가는 진입점이라 별도로 담지 않았습니다.
 
-설문 모델과 이미지 모델은 서로 다른 정보(과거 병력·환경 vs. 현재 피부 상태)를 측정하기 때문에 하나의 점수로 합산하지 않고 독립적으로 제시합니다.
+**1. 발병 위험도 확인** — 설문조사 → Logistic Regression → 저 / 중 / 고위험 3단계
+
+<img src="app/screenshots/survey.png" width="720">
+
+**2. 현재 피부 상태 분석** — 피부 사진 업로드 → EfficientNetV2-S(아토피 유무) → 아토피 의심 시 IGA 중증도 모델 → Grad-CAM으로 판단 근거 시각화
+
+<img src="app/screenshots/scan.png" width="720">
+
+**3. 결과 통합 제공** — 설문 위험도와 피부 분석 결과는 서로 다른 정보(과거 병력·환경 vs. 현재 피부 상태)를 측정하기 때문에 하나의 점수로 합산하지 않고 독립적으로 제시합니다.
+
+<img src="app/screenshots/results.png" width="720">
+
+**4. 이후 관리** — 임상 가이드라인 기반 RAG 챗봇으로 후속 정보 제공, 분석 이력 자동 기록
+
+<img src="app/screenshots/chatbot.png" width="720">
 
 ---
 
@@ -146,18 +151,6 @@ leakage 수정 후에도 동일 DermNet holdout에서는 성능 저하가 관찰
 ### 4. 생존분석 탐색 후 미채택
 
 같은 데이터로 발병 시점까지 고려하는 Kaplan-Meier/Cox 비례위험모델도 시도했지만, 변수별로 검정 방법(Log-rank ↔ Cox 단변량 ↔ Cox 다변량)에 따라 유의성이 흔들려 신뢰도 있는 위험 인자를 확정하기 어려웠습니다. 로지스틱 회귀는 동일 데이터에서 4개 인자 모두 p<0.05로 안정적으로 유의해 서비스용 모델로 확정했습니다. 분석 코드는 `training/survival_analysis/`에 참고용으로 보존합니다.
-
----
-
-## 🖼️ 스크린샷
-
-| 로그인 | 홈 | 설문 | 피부 스캔 |
-|:------:|:---:|:----:|:--------:|
-| ![로그인](app/screenshots/login.png) | ![홈](app/screenshots/home.png) | ![설문](app/screenshots/survey.png) | ![스캔](app/screenshots/scan.png) |
-
-| 분석 결과 | AI 챗봇 | 기록 보기 |
-|:---------:|:-------:|:--------:|
-| ![결과](app/screenshots/results.png) | ![챗봇](app/screenshots/chatbot.png) | ![기록](app/screenshots/history.png) |
 
 ---
 
