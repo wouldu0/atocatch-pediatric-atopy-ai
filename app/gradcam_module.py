@@ -56,7 +56,7 @@ def load_models(model_a_path: str, model_b_path: str, device=None):
 # ── Grad-CAM 핵심 ────────────────────────────────────────────
 class GradCAM:
     """
-    EfficientNetV2 전용 Grad-CAM.
+    EfficientNetV2 전용 Grad-CAM++.
     마지막 Conv 블록(blocks[-1])의 출력을 타겟 레이어로 사용합니다.
     """
 
@@ -98,8 +98,18 @@ class GradCAM:
         score = output[0, class_idx]
         score.backward()
 
-        # 가중 평균
-        weights = self.gradients.mean(dim=[2, 3], keepdim=True)  # [1,C,1,1]
+        # Grad-CAM++ 가중치
+        # 바닐라 Grad-CAM(gradient 단순 평균)은 여러 채널이 서로 다른 위치에
+        # 반응할 때 활성이 뭉개져 실제 병변과 어긋나는 경우가 많아 채택.
+        # 채널별 2차 미분 기반 alpha 계수로 가중해 다중/분산된 관심 영역에 더 강함.
+        grads = self.gradients
+        acts = self.activations
+        grads2 = grads ** 2
+        grads3 = grads ** 3
+        sum_acts = acts.sum(dim=[2, 3], keepdim=True)
+        eps = 1e-8
+        alpha = grads2 / (2 * grads2 + sum_acts * grads3 + eps)
+        weights = (alpha * F.relu(grads)).sum(dim=[2, 3], keepdim=True)  # [1,C,1,1]
         cam = (weights * self.activations).sum(dim=1, keepdim=True)  # [1,1,H,W]
         cam = F.relu(cam)
 
