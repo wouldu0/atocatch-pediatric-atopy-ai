@@ -2,9 +2,9 @@
 
 # 👶 AtoCatch
 
-### AI 기반 영유아 아토피 위험도 예측 · 맞춤 홈케어 서비스
+**AI 기반 영유아 아토피 위험도 예측 · 맞춤 홈케어 서비스**
 
-*"아이의 피부 사진 한 장과 간단한 설문으로, 집에서도 아토피를 조기에 잡는다"*
+> 스마트폰 피부 사진 한 장과 간단한 설문만으로, 집에서도 아토피를 조기에 잡는다
 
 [![Streamlit App](https://img.shields.io/badge/🔗_라이브_데모-atocatch.streamlit.app-1b6554?style=for-the-badge)](https://atocatch.streamlit.app/)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -15,253 +15,133 @@
 
 ---
 
-## 🍼 왜 만들었나요?
+## 📌 프로젝트 소개
 
-> **"영유아 아토피, 부모가 미리 알아차리기 어렵다"**
+AtoCatch는 피부 이미지 분석 모델과 공공데이터 기반 설문 위험도 예측 모델을 결합해, 영유아 아토피 피부염을 조기에 발견·관리하도록 돕는 AI 헬스케어 서비스입니다. 국내 아토피 환자 중 0~4세가 13.5만 명으로 가장 많고, 방치 시 1인당 의료비가 20대 기준 7배까지 늘어난다는 점에서 영유아기 조기 발견의 필요성에서 출발했습니다.
 
-건조함·붉어짐·가려움은 흔한 증상이라 아토피 위험 신호인지 단순 피부 트러블인지 구분하기 어렵습니다.  
-말 못하는 아이는 불편함을 표현할 수 없고, 맞벌이 부모는 반복 통원 자체가 큰 부담입니다.
-
-| 📊 국내 아토피 현황 | |
+| 구분 | 내용 |
 |---|---|
-| 👥 연간 진료 환자 | **97.3만 명** (전 연령대 만성 질환) |
-| 🏥 연간 외래 청구 | **241만 건** (99.9% 소액 반복 구조) |
-| 💸 요양급여 비용 | **1,972억 원** (2022년 대비 12% 증가) |
-| 👶 최다 환자 연령 | **0~4세** (13.5만 명) |
-| 📈 방치 시 비용 폭증 | 영유아기 1인당 5.6만 원 → **20대 39.9만 원 (7배)** |
+| 개발 기간 | 2026.05 · 약 1개월 |
+| 팀 구성 | 3인 |
+| 타깃 | 영유아(0~5세) 보호자 |
+| 이미지 데이터 | AI Hub 합성 10,800장 + DermNet NZ 265장 |
+| 설문 데이터 | 한국아동패널 1~10차, N=1,967명 |
+| 이미지 모델 | EfficientNetV2-S (아토피 유무 + IGA 중증도) |
+| 설문 모델 | Logistic Regression |
+| 서비스 | Streamlit 멀티페이지 웹앱 + RAG 챗봇 |
 
-> 💡 **영유아기 조기 발견·관리가 성인기 만성화와 의료비 부담을 줄이는 핵심입니다.**
+**핵심 기능**
 
----
-
-## 🎯 AtoCatch가 해결하는 문제
-
-| 문제 | 해결 방법 | 서비스 |
-|------|-----------|--------|
-| 잠재 위험 요인을 종합적으로 판단하기 어려움 | 로지스틱 회귀 기반 **아토피 발병 위험도 사전 예측** | 🔮 우리 아이 아토피 위험 미리보기 |
-| 비전문가가 피부 트러블과 아토피를 육안으로 구분 불가 | EfficientNetV2-S 기반 **스마트폰 사진만으로 아토피 여부·중증도 확인** | 📸 우리 아이 아토피 상태 바로보기 |
-| 잦은 통원과 반복 확인에 따른 시간·비용 부담 | LLM·RAG 기반 **AI 홈케어 + 증상 이력 자동 기록** | 🤖 24시간 AI 아토피 챗봇 & 기록보기 |
+- **피부 이미지 분석** — 스마트폰 사진으로 아토피 유무·IGA 중증도 판별, Grad-CAM으로 근거 부위 시각화
+- **설문 위험도 예측** — 부모 병력·환경 노출 등 11개 변수로 아토피 발병 위험도를 저/중/고위험 3단계로 안내
+- **AI 홈케어 챗봇** — 임상 가이드라인 기반 RAG 챗봇 상담 + 진단 이력 자동 기록
 
 ---
 
-## ✨ 주요 기능
+## 👩‍💻 담당 역할
 
-| 기능 | 설명 |
-|------|------|
-| 🔍 **피부 이미지 분석** | EfficientNetV2-S — 아토피 유무 이진 분류 |
-| 📊 **IGA 중증도 분류** | mild vs. moderate~severe 2단계 분류 |
-| 🌡️ **Grad-CAM 히트맵** | 모델이 주목한 피부 부위 시각화 |
-| 📋 **설문 위험도 예측** | 11개 유전·환경 변수 기반 아토피 발병 위험도 |
-| 🤖 **AI 챗봇 상담** | 임상 가이드라인 기반 RAG 아토피 전문 챗봇 |
-| 📄 **리포트 출력** | HTML 형식 분석 결과 보고서 다운로드 |
-| 📅 **기록 관리** | 회원별 진단 이력 조회 (최근 50건) |
+3인 팀에서 **이미지 분류 모델 전체**와 **설문 데이터 선정·분석**을 담당했습니다.
+
+| 구분 | 담당 내용 |
+|---|---|
+| 이미지 모델링 | 데이터 전처리, 아키텍처 비교, 학습·평가, Grad-CAM, 배포 후 leakage 감사 및 재학습까지 전체 |
+| 설문 데이터 | 한국아동패널 데이터 선정, 전처리·파생변수 설계·통계분석(단변량/VIF/로지스틱) |
+
+> 설문 위험도 모델의 학습·보정·threshold 선정(Logistic Regression)은 팀원이 진행했습니다. 웹 서비스(Streamlit 앱 구현)는 다른 팀원이 담당했습니다.
 
 ---
 
-## 🤖 AI 모델 상세
+## 📊 주요 결과
 
-### 📸 이미지 분류 모델 (EfficientNetV2-S)
+### 이미지 분류 모델
 
-| | Model 2-A : 아토피 유무 | Model 2-B : IGA 중증도 |
-|---|---|---|
-| **Accuracy** | **79.6%** | **83.9%** |
-| **F1-Score** | 80.9% | 83.7% |
-| **AUC** | 0.839 | 0.876 |
-| **Sensitivity** | 88.5% | 90.6% |
-| **Specificity** | 76.8% | 64.3% |
-| **Threshold** | 0.274 (Youden's J) | 0.38 (F1 최적) |
-| Internal Acc/F1/AUC | 95.1% / 95.1% / 0.987 | — |
-| 학습 데이터 | AI Hub 합성 2,663장(base-id 그룹 보존 split) + DermNet 157장 | AI Hub IGA 라벨 1,800장 |
-| 평가 데이터 | DermNet holdout(108장) | 합성 데이터 내부 검증 |
+| 태스크 | Accuracy | F1 | AUC | Sensitivity |
+|---|---:|---:|---:|---:|
+| 아토피 유무 (DermNet holdout) | 79.6% | 80.9% | 0.839 | 88.5% |
+| IGA 중증도 (내부 검증) | 83.9% | 83.7% | 0.876 | 90.6% |
 
-> ℹ️ 위 Accuracy/F1/AUC/Sensitivity/Specificity는 전부 **DermNet holdout 기준**입니다 (완전히 독립된 external test가 아님 — 바로 아래 한계 설명 참고).
+> 🔑 합성 데이터 단독 내부 성능 95.8% → 실제 이미지 평가 62.6%로 급락(도메인 갭). DermNet 실제 이미지 157장을 학습에 믹싱해 홀드아웃 기준 Acc를 76.9%까지 끌어올렸습니다. 위 수치는 완전히 독립적인 external test가 아니라 **DermNet holdout 기준**입니다 — 자세한 내용은 아래 "모델 검증과 의사결정" 참고.
 
-> 🔑 **핵심 인사이트**: 합성 데이터 단독 내부 성능 95.8% → 실제 이미지(DermNet 265장) 평가 62.6%로 급락.  
-> DermNet 실제 이미지 157장을 학습에 믹싱하면 나머지 108장 홀드아웃 기준 Acc가 76.9%까지 **+14.2%p** 향상 (도메인 갭 공략 — 믹싱 전후 홀드아웃 크기가 달라 참고용 수치입니다)
->
-> ⚠️ **"외부 검증"이 아니라 "DermNet holdout 평가"로 정정**: DermNet holdout set을 활용해 실제 피부 이미지에서의 domain gap을 확인하고 모델 구조 및 threshold를 탐색했습니다. **동일한 holdout set이 모델 선택(`eval_comparison.py`)과 threshold 설정(`utils_threshold.py`)에도 사용되어**, 위 표의 수치는 완전히 독립적인 external test 성능으로 해석할 수 없습니다. "5개 아키텍처 중 최고 성능을 낸 모델을, 같은 데이터로 최적 threshold까지 고른 뒤, 같은 데이터로 다시 평가한 결과"라는 한계가 있습니다.
+### 설문 위험도 모델
 
-<details>
-<summary><b>🔎 사후 방법론 검증: AI Hub base-id 그룹 leakage 재학습 (2026-08-08 반영, 배포 모델 교체됨)</b></summary>
+| 지표 | 결과 |
+|---|---:|
+| Test AUC | 0.629 |
+| Test Recall | 0.7667 (threshold 0.12) |
+| 핵심 위험 인자 (p<0.05) | 항생제 3회↑(OR 1.96) · 부모 아토피(1.72) · 부모 비염(1.39) · 실내 곰팡이(1.37) |
 
-AI Hub 라벨 데이터의 `정면`/`측면` 폴더가 실제로는 같은 아동을 두 각도로 찍은 게 아니라(각 JSON의 `generated_parameters`가 파일마다 랜덤 배정되고, 두 폴더의 ID 풀이 아예 안 겹침) 진단 파라미터 기반으로 생성된 별개의 합성 이미지라는 것을 확인했습니다. 대신 **`정면` 폴더 내부에서 같은 base-id가 신체부위(P)·병변(L) 코드만 다르게 여러 장 존재하는 실제 중복 패턴**을 발견했습니다 — 같은 합성 케이스를 다른 신체 부위/병변으로 렌더링한 것으로 추정되며, 실제 동일 "환자"라는 원본 메타데이터로 증명된 것은 아니라 subject-level이 아니라 **base-id group-preserving split**이라고 부릅니다. 이 그룹 중 46개(전체 아토피 이미지 풀의 5.33%, 96장)가 기존 `data_split.py`의 순수 랜덤 분할에서 train/val/test에 걸쳐 나뉘어 있었고, 그중 16개 그룹은 train과 test에 동시에 걸쳐 있었습니다(직접적인 test leakage).
+> 배포 모델은 그대로 유지하되, 사후 검증에서 outcome 정의에 방법론적 한계가 있는 것을 발견해 별도로 투명하게 공개하고 있습니다 — 아래 참고.
 
-`training/image_classification/check_aihub_subject_leakage.py`로 위 사실을 확인하고, `make_grouped_split.py`(base-id 그룹을 절대 쪼개지 않는 GroupShuffleSplit)로 같은 아키텍처(tf_efficientnetv2_s)를 재학습했습니다 — 전체 재학습 과정은 `training/image_classification/train_binary_grouped_final.py`에 있습니다 (`eval_comparison.py`의 학습 루프를 그대로 재사용하고 데이터 split만 교체).
+---
+
+## 🌐 서비스 흐름
+
+```
+로그인 → 홈
+   ├─ 설문조사 ──────→ Logistic Regression → 저 / 중 / 고위험 3단계
+   └─ 피부 스캔 ──────→ EfficientNetV2-S (아토피 유무) → Grad-CAM
+                              │ 아토피 의심 시
+                              ▼
+                        EfficientNetV2-S (IGA 중증도) → Grad-CAM
+   ↓
+종합 분석 결과 리포트 → AI 챗봇 상담(RAG) / 기록 관리
+```
+
+설문 모델과 이미지 모델은 서로 다른 정보(과거 병력·환경 vs. 현재 피부 상태)를 측정하기 때문에 하나의 점수로 합산하지 않고 독립적으로 제시합니다.
+
+---
+
+## 🔍 모델 검증과 의사결정
+
+### 1. 합성 → 실사 도메인 갭과 DermNet mixing
+
+AI Hub 합성 이미지로만 학습하면 내부 성능은 95.8%였지만, 실제 DermNet 이미지 265장 평가에서는 62.6%로 급락했습니다. DermNet 실제 이미지 157장을 학습에 소량 믹싱하는 것만으로 나머지 108장 홀드아웃 기준 Acc가 76.9%까지(+14.2%p) 개선돼, 이 방식을 최종 파이프라인에 반영했습니다.
+
+### 2. AI Hub base-id 그룹 leakage 발견 → 재학습
+
+배포 후 재검토에서 AI Hub 라벨 데이터의 `정면` 폴더 내부에 **같은 base-id가 신체부위·병변 코드만 다르게 여러 장 존재하는 중복 패턴**을 발견했습니다(같은 합성 케이스로 추정 — 실제 동일 "환자"라는 원본 메타데이터로 증명된 것은 아니라 patient-level이 아닌 **base-id group-preserving split**이라고 표기합니다). 기존 `data_split.py`의 순수 랜덤 분할은 이 그룹을 쪼개 train/test에 걸치게 했고(전체 풀의 5.33%, 16개 그룹은 train·test 동시 노출로 직접적 leakage), `make_grouped_split.py`(GroupShuffleSplit)로 그룹을 보존해 재학습했습니다.
 
 | | 기존(랜덤 split, leakage 있음) | 재학습(그룹 보존 split) |
-|---|---|---|
+|---|---:|---:|
 | DermNet holdout Acc | 80.6% | 79.6% |
-| DermNet holdout F1 | 81.1% | 80.9% |
 | DermNet holdout AUC | 0.828 | **0.839** |
 | DermNet holdout Sensitivity | 69.2% | **88.5%** |
-| Threshold | 0.29 | 0.274 |
 
-**결론**: leakage를 고쳐도 DermNet holdout 성능은 무너지지 않았습니다 — Acc/F1은 거의 동일(±1%p), AUC는 소폭 상승, Sensitivity는 크게 개선됐습니다. leakage는 AI Hub 내부 train/val/test 사이에서만 발생했고 DermNet은 애초에 AI Hub와 완전히 별개 소스라 이 leakage와 무관했기 때문으로 해석됩니다. 즉 기존 배포 모델의 DermNet holdout 성능이 "leakage 때문에 부풀려진 착시"는 아니었습니다. 재학습된 모델을 검증 후 배포 모델로 교체했습니다 — 위 표(Model 2-A)는 재학습 모델 기준입니다.
+leakage를 고쳐도 DermNet holdout 성능은 무너지지 않고 오히려 AUC·Sensitivity가 개선돼, 기존 배포 모델의 실제 검증 성능이 leakage 덕에 부풀려진 게 아니었다는 것을 확인했습니다. 검증 후 재학습된 모델로 배포를 교체했습니다.
 
-⚠️ 이 결과는 seed=42 1회 실행 기준입니다. 그룹 단위 분할이라 클래스 비율이 seed마다 흔들릴 수 있어, 완전한 재현성 검증(다른 seed 반복)은 아직 하지 않았습니다.
+<details>
+<summary>재현 스크립트와 남은 한계 보기</summary>
+
+- 점검: `check_aihub_subject_leakage.py` / 재분할 유틸: `make_grouped_split.py` / 재학습: `train_binary_grouped_final.py`(`eval_comparison.py`의 학습 루프를 그대로 재사용하고 데이터 split만 교체)
+- DermNet holdout(108장)이 아키텍처 선택(`eval_comparison.py`)과 threshold 설정(`utils_threshold.py`)에도 재사용돼, 위 수치는 완전히 독립적인 external test는 아닙니다.
+- 결과는 seed=42 1회 실행 기준이라 다른 seed에서도 안정적인지는 아직 확인하지 못했습니다.
 
 </details>
 
-### 📋 설문 위험도 모델 (Logistic Regression) — 배포 서비스 모델 (Original)
+### 3. 설문 outcome(Y) 정의 감사
 
-한국아동패널 데이터 N=1,967명 기반으로, 6차 시점(영유아기) 유전·환경 요인으로 7~10차 아토피 신규 발생을 예측합니다.
-
-**통계적으로 유의한 핵심 위험 인자 (p < 0.05)**
-
-| 위험 인자 | Odds Ratio | p-value | 해석 |
-|-----------|-----------|---------|------|
-| 💊 항생제 3회 이상 복용 | **1.963** | p<0.001*** | 아토피 위험 약 2배 |
-| 👨‍👩‍👧 부모 아토피 진단 | **1.720** | p=0.011* | 유전적 소인 |
-| 🌿 부모 알레르기 비염 | **1.389** | p=0.025* | 알레르기 체질 연관 |
-| 🍄 실내 곰팡이 노출 | **1.367** | p=0.028* | 환경 위험 요인 |
-
-| 모델 설정 | |
-|---|---|
-| 알고리즘 | Logistic Regression (`C=0.01`, `penalty='l2'`, `max_iter=3000`, `solver='lbfgs'`) |
-| 전처리 | 범주형 9개: 최빈값 대치 + One-Hot, 연속형 2개(`rural_years`, `outdoor_avg`): 중앙값 대치 + 표준화 |
-| 입력 변수 | 11개 변수 (범주형 9개 + 연속형 2개), 총 6개 변수 세트(A~F: 핵심4개/출생/환경/식습관/전체/민감도) 중 `C_core4_environment` 채택 |
-| Train/Val/Test | 60% / 20% / 20%, `stratify=Y`, `random_state=42` |
-| Threshold | **0.12** — Validation set에서 F2-score 기준 탐색, 4개 변수 세트 × 4개 샘플링 전략(NoSampling/ClassWeight/RandomOverSampler/SMOTE) × 4개 모델(LogisticRegression/RandomForest/GradientBoosting/MLP) 비교 중 채택 |
-| Test 성능 | AUC 0.629, Recall **0.7667**, Precision 0.181, F1 0.293 |
-| 위험도 표시 | 예측 확률 기준 **저위험(<13%) · 중위험(13~20%) · 고위험(≥20%)** 3단계 ([app_main.py](app/app_main.py)) — 서비스 UI용으로 threshold 0.12를 3단계로 재해석 |
-
-> ⚠️ **Isotonic Calibration 정정**: 사업계획서에는 Isotonic Calibration이 적용됐다고 되어 있지만, 실제로는 보정 단계 없는 순수 `LogisticRegression`입니다.
->
-> ✅ **원본 학습 스크립트를 찾아 검증 완료**: `training/survey_model/train_final_service_model.py`가 `atopy_service_model.joblib`을 실제로 만든 원본 스크립트입니다. 직접 재실행해 배포본과 계수를 대조한 결과 **최대 절대 오차 2.9×10⁻¹⁶(부동소수점 수준)으로 완전히 일치**하고, Threshold 0.12에서 Test Recall도 정확히 0.7667로 재현됩니다. 위 표의 수치는 전부 이 재실행 결과입니다.
->
-> ⚠️ **단, 이 검증은 "코드가 배포본을 정확히 재현하는가"만 확인한 것입니다.** `[1]~[6]` 파생변수 단계의 아토피 진단(Y) 정의 자체를 한국아동패널 공식 코드북과 대조한 결과 코호트 정의에 문제가 있었습니다 — 아래 "사후 방법론 검증" 참고. 위 표의 수치는 **배포 당시 Y 정의 기준 값이며, 서비스 모델은 그대로 유지**하고 있습니다.
-
-<details>
-<summary><b>🔎 사후 방법론 검증: Outcome(Y) 정의 재검토 (Post-hoc audit, not deployed)</b></summary>
-
-배포 이후 진행한 코드 재검토에서, 서비스 모델의 Y(7~10차 신규 아토피 발생) 정의에 결측 처리 문제가 있는 것을 발견했습니다. **아래 내용은 방법론적 검증 목적이며, 배포된 서비스 모델(`atopy_service_model.joblib`, threshold 0.12)에는 반영하지 않았습니다.**
-
-**발견한 문제**
-- 8차(`KCh15adx004`)·9차(`KCh16adx004`)는 코드북상 `1=예 / 2=아니오 / 99999999=무응답`으로 명확한 문항인데, 기존 전처리는 "1이 아니면 전부 0(미진단)"으로 처리하고 있었습니다.
-- 추적 상태를 엄격히 구분(각 차수 조사 참여 여부까지 확인)한 결과, 기존 Y=0(1,666명) 중 **430명(25.8%)은 7~10차 어디에서도 outcome을 확인할 충분한 follow-up 정보가 없는** 상태였습니다. 이들을 outcome-unknown으로 제외하면 분석대상은 1,967 → 1,537명이 됩니다.
-- 9차(코드북상 가장 명확한 1/2/무응답 구조)의 명시적 응답만 사용한 별도 분석은 N=1,306입니다.
-- 7·10차는 문항 형식이 달라(체크리스트·진단연도 기입형) 참여 여부 변수(`DCh14hlt021`, `JCh17int001`)로 "그 회차 조사에 참여했다"까지는 확인했지만, "무응답=미진단"이라는 skip-logic 자체를 코드북에서 직접 확인하지는 못했습니다. 그래서 7·10차 기반 음성 라벨은 `observed_negative`(운영적 정의)로, 8·9차만 쓰는 9차 단독 분석이 방법론적으로 가장 신뢰도가 높습니다.
-
-**재학습 결과 비교** (`training/survey_model/train_corrected_outcome_model.py`, threshold는 각 버전마다 validation에서 새로 탐색 — 기존 0.12를 재사용하지 않음)
+배포된 설문 모델의 원본 학습 스크립트(`train_final_service_model.py`)를 찾아 재실행한 결과, 배포본과 계수가 최대 오차 2.9×10⁻¹⁶(부동소수점 수준)로 완전히 일치함을 확인했습니다. 이 과정에서 Y(7~10차 신규 아토피 발생) 정의를 한국아동패널 공식 코드북과 대조하다가 결측 처리 문제를 발견했습니다: 8·9차는 코드북상 `1=예/2=아니오/99999999=무응답`으로 명확한데 기존 전처리가 무응답까지 전부 "미진단"으로 처리하고 있었고, 추적 상태를 엄격히 재구성하면 기존 Y=0(1,666명) 중 **430명(25.8%)은 실제로는 follow-up 정보가 없는 상태**였습니다.
 
 | 분석 | N | AUC |
-|---|---|---|
+|---|---:|---:|
 | 배포 서비스 모델 (Original) | 1,967 | 0.629 |
 | 7~10차 엄격 추적 검토 (Sensitivity) | 1,537 | 0.555 |
 | 9차 명시적 응답만 사용 (Primary) | 1,306 | 0.575 |
 
-**결론**: 더 엄격한 outcome 정의에서는 AUC가 감소하여, 기존 모델의 예측 성능이 outcome missing 처리 방식에 영향을 받았을 가능성을 확인했습니다. 다만 N·발생률·대상자 구성이 함께 바뀌었기 때문에, "기존 모델이 잘못된 라벨 덕분에 성능이 높았다"고 단정할 수는 없습니다 — label 수정 효과와 cohort 변화 효과가 섞여 있습니다.
+더 엄격한 정의에서는 AUC가 낮아져, 기존 성능이 outcome 결측 처리 방식에 영향을 받았을 가능성을 확인했습니다. 다만 N·발생률·대상자 구성이 함께 바뀌기 때문에 "기존 모델이 잘못된 라벨 덕분에 성능이 높았다"고 단정하지는 않습니다. **이 재검증은 방법론 감사 목적이며 배포 모델(threshold 0.12)에는 반영하지 않았습니다** — 서비스 코드 자체(전처리 파이프라인, threshold 흐름)는 정상 동작을 실제 실행으로 확인했고, 문제를 찾아 투명하게 공개해 관리하는 상태입니다.
 
-outcome-unknown으로 분류된 430명은 6차 시점 예측변수 결측률도 ~92%로 전반적인 추적 탈락 패턴과 일치했습니다. 다만 추적 탈락이 무작위라는 것을 입증할 수는 없어, attrition bias 가능성은 남아 있습니다.
+<details>
+<summary>재현 스크립트와 세부 근거 보기</summary>
+
+- 재학습: `training/survey_model/train_corrected_outcome_model.py` (threshold는 버전마다 validation에서 새로 탐색, 기존 0.12 재사용 안 함)
+- 7·10차는 문항 형식이 달라 참여 여부 변수(`DCh14hlt021`, `JCh17int001`)로 조사 참여만 확인했고, "무응답=미진단" skip-logic 자체는 코드북에서 직접 확인하지 못해 `observed_negative`(운영적 정의)로 표기 — 8·9차만 쓰는 9차 단독 분석이 방법론적으로 가장 신뢰도가 높습니다.
+- outcome-unknown 430명은 6차 시점 예측변수 결측률도 ~92%로 전반적 추적 탈락 패턴과 일치하지만, 무작위 탈락임을 통계적으로 입증하지는 못해 attrition bias 가능성은 남아 있습니다.
 
 </details>
 
-### 🧪 탐색적 분석: 생존분석 (서비스 미채택)
+### 4. 생존분석 탐색 후 미채택
 
-같은 한국아동패널 데이터로 발병 **시점**까지 고려하는 Kaplan-Meier / Cox 비례위험모델도 시도했으나, 최종 서비스에는 채택하지 않았습니다.
-
-| 분석 | parent_AD | area_apt | mold_ever |
-|------|-----------|----------|-----------|
-| Log-rank test | ✅ p=0.0039 | ✅ p<0.001 | ✅ p=0.0314 |
-| Cox 단변량 (전체 변수, [cox_univariate.csv](training/survival_analysis/results/cox_univariate.csv)) | ✅ p=0.0044 | ✅ p<0.001 | ✅ p=0.0324 |
-| Cox 다변량 ([cox_multivariate.csv](training/survival_analysis/results/cox_multivariate.csv)) | ❌ p=0.126 (비유의) | ❌ p=0.182 (비유의) | ✅ p=0.022 (유의) |
-
-> ⚠️ **미채택 이유**: 변수별로 검정 방법(Log-rank ↔ Cox 단변량 ↔ Cox 다변량)에 따라 유의성이 흔들려 신뢰도 있는 위험 인자를 확정하기 어려웠습니다 — 예를 들어 `parent_AD`는 단변량까지는 유의했지만 다른 변수를 통제한 다변량에서는 유의성을 잃었고, 반대로 `mold_ever`는 다변량에서만 유의했습니다. 로지스틱 회귀 모델은 동일 데이터에서 4개 인자 모두 p<0.05로 안정적으로 유의했기 때문에, 서비스용 위험도 예측은 로지스틱 회귀 모델로 확정했습니다. 분석 코드와 산출물은 재현·참고용으로 `training/survival_analysis/`에 보존합니다.
-
----
-
-## 📊 데이터셋
-
-| 데이터 | 출처 | 규모 | 용도 |
-|--------|------|------|------|
-| 아토피·피부 이미지 | AI Hub (한국지능정보사회진흥원) | 10,800장 (6 클래스 × 1,800) | 이미지 분류 모델 학습 |
-| 실제 피부 이미지 | DermNet NZ (직접 크롤링) | 265장 | Holdout 평가·도메인 갭 보완 (모델·threshold 선택에도 재사용됨) |
-| 영유아 패널 데이터 | 한국아동패널 (1~10차) | N=1,967명 | 설문 위험도 모델 학습 |
-
-> ⚠️ AI Hub 데이터는 라이선스 제한으로 레포지토리에 포함되지 않습니다.  
-> 🕷️ DermNet NZ 크롤러는 `training/image_classification/data_crawl_dermnet.py`에서 확인할 수 있습니다. (DermNet NZ 저작권 하에 있으므로 재사용 시 출처를 명시하세요.)
-
----
-
-## 🏗️ 프로젝트 구조
-
-```
-AtoCatch/
-├── app/                              # Streamlit 웹 앱 (streamlit run app/app_main.py 로만 실행)
-│   ├── app_main.py                   # 메인 앱 (로그인·회원가입·홈·설문·이미지 분석·챗봇·기록 전부 포함)
-│   ├── gradcam_module.py             # Grad-CAM 시각화 모듈
-│   ├── rag_engine.py                 # RAG 챗봇 엔진
-│   ├── model_config.json             # 현재 배포 아토피 유무 모델의 threshold·성능 메타데이터
-│   ├── model_config2.json            # 중증도 모델 메타데이터
-│   ├── atopy_service_model.joblib    # 설문 위험도 모델 (학습된 결과물 — 학습 코드는 아래 참고)
-│   ├── requirements.txt
-│   ├── design/                       # UI 이미지 에셋
-│   ├── screenshots/                  # 앱 스크린샷
-│   └── survey_model/                 # 설문 모델 계수·학습 데이터
-│
-└── training/                         # 모델 학습 코드
-    ├── image_classification/
-    │   ├── train_binary.py               # 아토피 유무 이진 분류 학습 (v1, 합성데이터만)
-    │   ├── train_binary_dermnet_mix_v2.py # 이진 분류 학습 v2 (DermNet 믹싱, efficientnet_b0)
-    │   ├── eval_comparison.py            # 5개 아키텍처 비교 실험 (아키텍처 선정용 — 이 실행 자체의 산출물이 배포 모델은 아님, tf_efficientnetv2_s 선정 근거)
-    │   ├── eval_binary_legacy_holdout.py # (구) DermNet 60/40 holdout 재평가 코드. 현재 배포 모델도, threshold(0.29)도 아님 — 참고용
-    │   ├── make_grouped_split.py     # base-id 그룹 보존 split 유틸 (leakage 수정용)
-    │   ├── train_binary_grouped_final.py # 현재 배포 모델(best_model.pth) 실제 학습 스크립트 — eval_comparison.py 학습 루프 재사용 + grouped split 적용
-    │   ├── check_aihub_subject_leakage.py # AI Hub base-id 중복(leakage) 점검
-    │   ├── predict.py                    # 단일 이미지 추론 (현재 배포된 grouped-split 모델 사용)
-    │   ├── data_setup.py             # 데이터 초기 설정
-    │   ├── data_split.py             # Train/Val/Test 분할
-    │   ├── data_split_raw.py         # 원시 데이터 분할 유틸
-    │   ├── data_prepare.py           # 데이터셋 준비 (data_split.py 실행 직후 이어서 실행)
-    │   ├── data_matching.py          # 이미지 매칭
-    │   ├── utils_gradcam.py          # Grad-CAM 모듈
-    │   ├── utils_threshold.py        # 임계값 최적화 (Youden's J)
-    │   ├── data_crawl_dermnet.py     # DermNet NZ 이미지 크롤러
-    ├── survey_model/
-    │   ├── train_features.py         # 설문 피처 가공 (pskc_final.csv 생성 — 모델 학습은 하지 않음)
-    │   ├── train_xgboost.py          # XGBoost 비교 실험
-    │   ├── eval_logistic_v2.py       # 로지스틱 회귀 v1/v2 변수셋 비교 (statsmodels OR·CI·p-value)
-    │   ├── train_final_service_model.py # atopy_service_model.joblib 원본 학습 스크립트 (배포본과 계수 bit-exact 일치 확인, 위 설문 모델 절 참고)
-    │   ├── train_corrected_outcome_model.py # 사후 방법론 검증용 재학습 (서비스 미적용, "🔎 사후 방법론 검증" 참고)
-    │   ├── data_merge.py             # 차수별 원시 데이터 병합 (merged.csv)
-    │   ├── data_build_ad_history.py  # 차수별 아토피 진단 이력 구축 (pskc_ad_history.csv)
-    │   └── eval_univariate.py        # 단변량 분석
-    └── survival_analysis/            # 생존분석 (탐색 후 미채택, 참고용)
-        ├── eval_survival_v1.py               # KM 생존곡선 + Cox 단변량
-        ├── eval_survival_v2.py               # Cox 단변량→다변량 변수선택 + KM
-        ├── eval_survival_v3_early_predictors.py  # 1~3차 변수로 4~10차 발병 예측 (로지스틱+생존분석)
-        └── results/                          # Cox/Log-rank 결과, KM·Forest plot
-```
-
-> ⚠️ **재현 스크립트 관련**
-> - 설문 위험도 모델: `training/survey_model/train_final_service_model.py`가 `atopy_service_model.joblib`을 실제로 만든 원본 스크립트로 확인됐습니다 (계수 bit-exact 일치). 이 스크립트의 Y(아토피 발생) 정의를 코드북과 대조해 문제를 발견했고, `train_corrected_outcome_model.py`로 별도 재검증했습니다 — 서비스 모델에는 반영하지 않았습니다 (자세한 내용은 위 "🔎 사후 방법론 검증" 참고).
-> - IGA 중증도 모델(`best_iga_model.pth`)을 실제로 학습한 스크립트는 이 레포에도, 관련된 다른 로컬 프로젝트 폴더에도 없었습니다. **확인된 것**: `tf_efficientnetv2_s(num_classes=2)`에 `strict=True`로 정상 로드됨(아키텍처·출력 클래스 수 일치), `data_matching.py`에 AI Hub 데이터에서 IGA 등급을 라벨링하는 전처리 코드 존재. **확인 안 된 것(추정하지 않음)**: optimizer, learning rate, loss, scheduler, augmentation, train/val/test split, random seed, epoch 수, class weighting 여부. 원 학습 스크립트를 찾을 때까지 이 모델을 재현하는 학습 코드는 추가하지 않습니다 — 아키텍처만 보고 학습 설정을 추정해서 만든 코드는 `best_iga_model.pth`의 재현이 아니라 별개의 새 구현이기 때문입니다.
-
----
-
-## 🚀 빠른 시작
-
-### 1. 클론
-
-`best_model.pth`(아토피 유무 분류), `best_iga_model.pth`(IGA 중증도 분류) 둘 다 `app/` 폴더에 레포와 함께 커밋되어 있어 별도 다운로드가 필요 없습니다 (각 77.8MB, GitHub 100MB 하드 리밋 이내).
-
-### 2. 환경 설정
-
-```bash
-cd app
-pip install -r requirements.txt
-```
-
-`app/` 폴더 안에 `.env` 파일 생성:
-```env
-OPENAI_API_KEY=your_openai_api_key
-```
-
-### 3. 앱 실행
-
-```bash
-streamlit run app/app_main.py
-```
+같은 데이터로 발병 시점까지 고려하는 Kaplan-Meier/Cox 비례위험모델도 시도했지만, 변수별로 검정 방법(Log-rank ↔ Cox 단변량 ↔ Cox 다변량)에 따라 유의성이 흔들려 신뢰도 있는 위험 인자를 확정하기 어려웠습니다. 로지스틱 회귀는 동일 데이터에서 4개 인자 모두 p<0.05로 안정적으로 유의해 서비스용 모델로 확정했습니다. 분석 코드는 `training/survival_analysis/`에 참고용으로 보존합니다.
 
 ---
 
@@ -279,27 +159,116 @@ streamlit run app/app_main.py
 
 ## 🛠️ 기술 스택
 
-| 분류 | 기술 |
-|------|------|
-| Frontend | Streamlit |
-| 딥러닝 | PyTorch, timm (EfficientNetV2-S) |
-| 머신러닝 | scikit-learn (Logistic Regression) |
-| AI 챗봇 | OpenAI API + RAG |
-| 시각화 | Grad-CAM, Plotly |
-| 배포 | Streamlit Community Cloud |
+Python 3.10+ · PyTorch · timm (EfficientNetV2-S) · scikit-learn · Streamlit · OpenAI API + RAG · Grad-CAM · Plotly
+
+## 📁 데이터
+
+| 데이터 | 출처 | 규모 | 용도 |
+|--------|------|------|------|
+| 아토피·피부 이미지 | AI Hub (한국지능정보사회진흥원) | 10,800장 (6 클래스 × 1,800) | 이미지 분류 모델 학습 |
+| 실제 피부 이미지 | DermNet NZ (직접 크롤링) | 265장 | Holdout 평가·도메인 갭 보완 |
+| 영유아 패널 데이터 | 한국아동패널 (1~10차) | N=1,967명 | 설문 위험도 모델 학습 |
+
+> ⚠️ AI Hub 데이터는 라이선스 제한으로 레포지토리에 포함되지 않습니다. DermNet NZ 크롤러는 `training/image_classification/data_crawl_dermnet.py`에서 확인할 수 있습니다(DermNet NZ 저작권 하에 있으므로 재사용 시 출처를 명시하세요).
 
 ---
 
-## ⚠️ Limitations
+<details>
+<summary><b>🗂️ 프로젝트 구조</b></summary>
 
-- **설문 위험도 모델 — outcome 추적 결측**: 배포 모델의 outcome(7~10차 신규 아토피 발생) 정의를 코드북과 대조한 결과, 기존 Y=0 중 25.8%(430명)는 추적 정보가 불충분한 상태로 미진단 처리되어 있었습니다. 사후 검증에서 더 엄격한 정의로 재분석하면 AUC가 낮아집니다 (자세한 내용은 위 "🔎 사후 방법론 검증" 참고). 이 재검증은 서비스 모델에는 반영하지 않았습니다.
-- **위와 같은 이유로 outcome-unknown 제외 표본의 attrition bias 가능성**: 제외된 430명이 6차 예측변수 결측률도 높아 전반적 추적 탈락으로 보이지만, 추적 탈락이 무작위임을 통계적으로 입증하지는 못했습니다.
-- **이미지 모델 — 평가셋 재사용**: DermNet holdout(108장)이 아키텍처 선택·threshold 선택·최종 성능 보고에 반복 사용되어, 보고된 수치는 완전히 독립적인 external test 성능이 아닙니다.
-- **이미지 모델 — AI Hub base-id 그룹 재현성 미검증**: base-id 그룹(같은 합성 케이스로 추정, 실제 동일 환자라는 원본 메타데이터 증명은 없음) 중복은 확인·수정했지만(위 "🔎 사후 방법론 검증" 참고), 그룹 보존 재분할 결과가 seed=42 1회 실행 기준이라 다른 seed에서도 결과가 안정적인지는 아직 확인하지 못했습니다.
+```
+AtoCatch/
+├── app/                              # Streamlit 웹 앱 (streamlit run app/app_main.py 로만 실행)
+│   ├── app_main.py                   # 메인 앱 (로그인·회원가입·홈·설문·이미지 분석·챗봇·기록 전부 포함)
+│   ├── gradcam_module.py             # Grad-CAM 시각화 모듈
+│   ├── rag_engine.py                 # RAG 챗봇 엔진
+│   ├── model_config.json             # 현재 배포 아토피 유무 모델의 threshold·성능 메타데이터
+│   ├── model_config2.json            # 중증도 모델 메타데이터
+│   ├── atopy_service_model.joblib    # 설문 위험도 모델 (학습된 결과물)
+│   ├── best_model.pth / best_iga_model.pth  # 이미지 모델 가중치 (레포에 직접 커밋)
+│   ├── requirements.txt
+│   ├── design/                       # UI 이미지 에셋
+│   ├── screenshots/                  # 앱 스크린샷
+│   └── survey_model/                 # 설문 모델 계수·학습 데이터
+│
+└── training/                         # 모델 학습 코드
+    ├── image_classification/
+    │   ├── train_binary.py               # 아토피 유무 이진 분류 학습 (v1, 합성데이터만)
+    │   ├── train_binary_dermnet_mix_v2.py # 이진 분류 학습 v2 (DermNet 믹싱, efficientnet_b0)
+    │   ├── eval_comparison.py            # 5개 아키텍처 비교 실험 (아키텍처 선정용)
+    │   ├── eval_binary_legacy_holdout.py # (구) DermNet 60/40 holdout 재평가 코드 — 참고용
+    │   ├── make_grouped_split.py         # base-id 그룹 보존 split 유틸 (leakage 수정용)
+    │   ├── train_binary_grouped_final.py # 현재 배포 모델(best_model.pth) 실제 학습 스크립트
+    │   ├── check_aihub_subject_leakage.py # AI Hub base-id 중복(leakage) 점검
+    │   ├── predict.py                    # 단일 이미지 추론 (현재 배포 모델 사용)
+    │   ├── data_setup.py / data_split.py / data_split_raw.py / data_prepare.py / data_matching.py
+    │   ├── utils_gradcam.py              # Grad-CAM 모듈
+    │   ├── utils_threshold.py            # 임계값 최적화 (Youden's J)
+    │   └── data_crawl_dermnet.py         # DermNet NZ 이미지 크롤러
+    ├── survey_model/
+    │   ├── train_features.py             # 설문 피처 가공 (모델 학습은 하지 않음)
+    │   ├── train_xgboost.py              # XGBoost 비교 실험
+    │   ├── eval_logistic_v2.py           # 로지스틱 회귀 v1/v2 변수셋 비교
+    │   ├── train_final_service_model.py  # atopy_service_model.joblib 원본 학습 스크립트 (bit-exact 검증됨)
+    │   ├── train_corrected_outcome_model.py # 사후 outcome 감사용 재학습 (서비스 미적용)
+    │   ├── data_merge.py / data_build_ad_history.py
+    │   └── eval_univariate.py
+    └── survival_analysis/                # 생존분석 (탐색 후 미채택, 참고용)
+        ├── eval_survival_v1.py / eval_survival_v2.py / eval_survival_v3_early_predictors.py
+        └── results/
+```
+
+> ⚠️ IGA 중증도 모델(`best_iga_model.pth`)을 실제로 학습한 스크립트는 어디에도 없습니다. 확인된 것은 `tf_efficientnetv2_s(num_classes=2)`에 strict load로 정상 로드된다는 아키텍처 일치뿐이고, optimizer·split·seed 등 학습 설정은 불명이라 추정해서 만든 코드는 추가하지 않았습니다(아키텍처 추정 재현 ≠ 실제 재현이기 때문).
+
+</details>
+
+<details>
+<summary><b>⚙️ 실행 방법</b></summary>
+
+`best_model.pth`, `best_iga_model.pth` 모두 `app/`에 레포와 함께 커밋되어 있어 별도 다운로드가 필요 없습니다(각 77.8MB, GitHub 100MB 리밋 이내).
+
+```bash
+cd app
+pip install -r requirements.txt
+```
+
+`app/` 폴더 안에 `.env` 파일 생성:
+```env
+OPENAI_API_KEY=your_openai_api_key
+```
+
+```bash
+streamlit run app/app_main.py
+```
+
+</details>
+
+<details>
+<summary><b>🧹 프로젝트 종료 후 리팩터링</b></summary>
+
+포트폴리오 정리 과정에서 저장소와 서비스 코드를 다시 검증해 다음을 수정했습니다.
+
+- **설문 위험도 예측 인코딩 반전 버그 수정**: 8개 설문 항목의 예/아니오가 학습 데이터와 반대로 모델에 들어가던 버그, 항생제 응답 카테고리 off-by-one — 실제 서비스 예측 결과에 영향 있던 버그라 실행 테스트로 수정 확인
+- 파일명과 실제 내용이 다른 스크립트 다수 정리·개명, 죽은 코드(안 쓰는 로그인/회원가입 모듈, 구버전 앱 스냅샷 등) 삭제
+- 원본 학습 스크립트를 찾아 배포된 설문 모델과 계수 bit-exact 일치 검증, 사업계획서의 Isotonic Calibration 오기재 정정
+- 모델 가중치를 Google Drive 런타임 다운로드 방식에서 레포 직접 커밋으로 전환 (외부 의존성 제거)
+- AI Hub base-id leakage 발견 → grouped split 재학습 → 배포 모델 교체 (위 "모델 검증과 의사결정" 참고)
+- 설문 모델 outcome(Y) 정의를 공식 코드북과 대조해 방법론적 한계 발견·투명하게 공개 (위 참고)
+- 재학습 스크립트의 개인 PC 절대경로를 저장소 기준 상대경로로 전환
+
+</details>
 
 ---
 
-## ⚠️ 면책 조항
+## ⚠️ 한계
 
-본 서비스의 결과는 AI 예측 수치이며, **의사의 진단이나 치료를 대체할 수 없습니다.**  
-정확한 진단과 치료는 소아청소년과 또는 피부과 전문의와 상담하시기 바랍니다.
+- **설문 위험도 모델**: 배포 모델의 outcome(7~10차 신규 아토피 발생) 정의를 코드북과 대조한 결과 기존 Y=0의 25.8%가 추적 정보 불충분 상태였고, 엄격한 정의로 재분석하면 AUC가 낮아집니다. 이 재검증은 방법론 감사 목적이며 배포 모델에는 반영하지 않았습니다.
+- 위와 같은 이유로 outcome-unknown 제외 표본의 attrition bias 가능성이 남아 있습니다(무작위 탈락임을 통계적으로 입증하지는 못함).
+- **이미지 모델**: DermNet holdout(108장)이 아키텍처·threshold 선택과 최종 성능 보고에 반복 사용돼, 보고된 수치가 완전히 독립적인 external test 성능은 아닙니다.
+- base-id 그룹 보존 재분할 결과가 seed=42 1회 실행 기준이라, 다른 seed에서도 안정적인지는 추가 검증이 필요합니다.
+
+---
+
+## ⚠️ 사용 안내
+
+본 서비스의 결과는 AI 예측 수치이며, **의사의 진단이나 치료를 대체할 수 없습니다.** 정확한 진단과 치료는 소아청소년과 또는 피부과 전문의와 상담하시기 바랍니다.
