@@ -213,6 +213,7 @@ AtoCatch/
     │   ├── utils_threshold.py        # 임계값 최적화 (Youden's J)
     │   ├── check_aihub_subject_leakage.py # AI Hub base-id 중복(leakage) 점검
     │   ├── make_grouped_split.py     # base-id 그룹 보존 split 유틸 (leakage 수정용)
+    │   ├── retrain_grouped_binary_leak_fix.py # 실제 재학습 스크립트 (eval_comparison.py 학습 루프 재사용 + grouped split만 교체)
     │   ├── data_crawl_dermnet.py     # DermNet NZ 이미지 크롤러
     ├── survey_model/
     │   ├── train_features.py         # 설문 피처 가공 (pskc_final.csv 생성 — 모델 학습은 하지 않음)
