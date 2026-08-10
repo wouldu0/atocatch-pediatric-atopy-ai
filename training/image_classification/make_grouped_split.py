@@ -1,5 +1,6 @@
 """
-AI Hub base-id 그룹을 보존하는 patient-level(그룹) split
+AI Hub base-id 그룹을 보존하는 split (base-id group-preserving split)
+실제 동일 환자라는 메타데이터는 없어 patient-level이라고 단정하지 않음
 ==============================================================
 배경: check_aihub_subject_leakage.py 검증으로 "아토피_정면" 폴더 안에서
 같은 base-id(예: H1_300346)가 신체부위(P)·병변(L) 코드만 다르게 여러 장

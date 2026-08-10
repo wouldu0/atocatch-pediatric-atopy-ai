@@ -201,7 +201,7 @@ if __name__ == "__main__":
     print("=" * 70)
     if result["train_test_leak"] > 0:
         print(f"⚠️ Train/Test 간 subject 중복 {result['train_test_leak']}명 확인 — "
-              f"실제 leakage입니다. GroupShuffleSplit으로 patient-level split 재구성 필요.")
+              f"실제 leakage입니다. GroupShuffleSplit으로 base-id 그룹 보존 split 재구성 필요.")
     else:
         print("✅ 이 실행에서는 Train/Test subject 중복이 발견되지 않았습니다. "
               "단, guess_subject_id()의 정규식이 실제 명명 규칙과 맞는지 STEP 0 출력으로 "

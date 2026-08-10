@@ -1656,6 +1656,9 @@ def render_survey():
                 }])
 
                 prob = float(risk_model.predict_proba(model_input_df)[0, 1])
+                # 0.13 / 0.20은 모델의 실제 operating threshold(0.12, F2 최적화)와는 별개로
+                # 화면에 3단계로 보여주기 위한 표시용 구간이며, 별도 통계적 근거로 도출된
+                # 값은 아니다 (원본 학습 스크립트에도 이 구간의 도출 과정은 없음).
                 if prob < 0.13:   level = "저위험"
                 elif prob < 0.20: level = "중위험"
                 else:             level = "고위험"

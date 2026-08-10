@@ -76,7 +76,7 @@ AI Hub 합성 이미지와 DermNet 실사 이미지를 별도로 관리하며 �
 | 태스크 | Accuracy | F1 | AUC | Sensitivity(민감도) |
 |---|---:|---:|---:|---:|
 | 아토피 유무 (DermNet holdout) | 79.6% | 80.9% | 0.839 | 88.5% |
-| IGA 중증도 (내부 검증) | 83.9% | 83.7% | 0.876 | 90.6% |
+| IGA 중증도 (내부 검증) | 84.4% | 84.3% | 0.876 | 90.6% |
 
 ※ DermNet holdout은 모델 선택과 threshold 설정에도 사용되어, 완전히 독립적인 test 성능은 아닙니다.
 
@@ -198,7 +198,7 @@ Kaplan-Meier와 Cox 모델도 탐색했지만, 분석 방법에 따라 유의한
 
 ## 🛠️ 기술 스택
 
-Python 3.10+ · PyTorch · timm (EfficientNetV2-S) · scikit-learn · Streamlit · OpenAI API + RAG · Grad-CAM · Plotly
+Python 3.10+ · PyTorch · timm (EfficientNetV2-S) · scikit-learn · Streamlit · Supabase (Auth · PostgreSQL · pgvector · RLS) · OpenAI API + RAG · Grad-CAM++ · Plotly
 
 ## 📁 데이터
 
@@ -271,13 +271,20 @@ cd app
 pip install -r requirements.txt
 ```
 
-`app/` 폴더 안에 `.env` 파일 생성:
+Supabase 프로젝트를 만들고 `supabase/schema.sql`을 SQL Editor에서 실행한 뒤, `app/` 폴더 안에 `.env` 파일 생성:
 ```env
 OPENAI_API_KEY=your_openai_api_key
+SUPABASE_URL=https://xxxx.supabase.co
+
+# 로그인/분석 기록용 — RLS 적용, 클라이언트에 노출돼도 되는 키
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+
+# RAG 문서 인덱싱 전용 — RLS 우회, 서버 사이드에서만 사용
+SUPABASE_SECRET_KEY=sb_secret_...
 ```
 
 ```bash
-streamlit run app/app_main.py
+streamlit run app_main.py
 ```
 
 </details>
@@ -304,6 +311,7 @@ streamlit run app/app_main.py
 
 - **설문 모델**: 추적이 중단된 일부 아동이 기존 outcome에서 미발병으로 처리된 문제가 있었고, 엄격한 기준으로 다시 분석하면 AUC가 낮아집니다. 사후 재분석은 방법론 검증용이며 현재 배포 모델에는 반영하지 않았습니다.
 - 추적이 중단된 사람이 무작위로 빠졌다고 입증할 수 없어 **attrition bias(추적 탈락에 따른 편향)** 가능성이 남아 있습니다.
+- 화면에 표시되는 저/중/고위험 3단계 구간(0.13 / 0.20)은 모델의 실제 operating threshold(0.12, F2 최적화)와 별개로 UX 표시용으로 정해진 값이며, 통계적으로 도출된 구간은 아닙니다.
 - **이미지 모델**: DermNet holdout 108장을 아키텍처 선택·threshold 설정·성능 보고에 반복 사용했기 때문에, 현재 수치는 완전히 독립적인 외부 테스트 성능이 아닙니다.
 - base-id 그룹 보존 재학습은 seed=42 1회 실행 기준으로, 다른 seed에서도 같은 결과가 유지되는지는 추가 확인이 필요합니다.
 - **Grad-CAM**: 판단 근거를 보여주는 참고용 시각화이며, 실제 병변 위치를 항상 정확히 짚어주는 것을 보장하지 않습니다. 바닐라 Grad-CAM에서 병변과 어긋난 활성화가 자주 관찰돼 Grad-CAM++로 교체해 개선했지만, 일부 이미지에서는 여전히 정상 피부에 활성화가 남습니다.
