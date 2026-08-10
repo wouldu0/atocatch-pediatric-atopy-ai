@@ -239,6 +239,9 @@ AtoCatch/
     │   ├── make_grouped_split.py         # base-id 그룹 보존 split 유틸 (leakage 수정용)
     │   ├── train_binary_grouped_final.py # 현재 배포 모델(best_model.pth) 실제 학습 스크립트
     │   ├── check_aihub_subject_leakage.py # AI Hub base-id 중복(leakage) 점검
+    │   ├── train_iga_severity.py         # IGA 중증도 모델(best_iga_model.pth) 학습 스크립트
+    │   ├── eval_iga_threshold_search.py  # IGA 모델 threshold 탐색 (Youden's J / F1)
+    │   ├── eval_iga_final.py             # IGA 모델 threshold=0.38 최종 평가
     │   ├── predict.py                    # 단일 이미지 추론 (현재 배포 모델 사용)
     │   ├── data_setup.py / data_split.py / data_split_raw.py / data_prepare.py / data_matching.py
     │   ├── utils_gradcam.py              # Grad-CAM 모듈
@@ -257,7 +260,7 @@ AtoCatch/
         └── results/
 ```
 
-> ⚠️ IGA 중증도 모델(`best_iga_model.pth`)을 실제로 학습한 스크립트는 어디에도 없습니다. 확인된 것은 `tf_efficientnetv2_s(num_classes=2)`에 strict load로 정상 로드된다는 아키텍처 일치뿐이고, optimizer·split·seed 등 학습 설정은 불명이라 추정해서 만든 코드는 추가하지 않았습니다(아키텍처 추정 재현 ≠ 실제 재현이기 때문).
+> ✅ IGA 중증도 모델(`best_iga_model.pth`)의 학습 스크립트(`train_iga_severity.py`)를 포트폴리오 정리 중 별도 백업에서 다시 찾았습니다. 산출물로 남아있던 `model_config.json`의 성능 수치(Accuracy 84.44%, F1 84.31%, AUC 0.8758, Sensitivity 90.58%, Specificity 64.29%)가 배포된 `app/model_config2.json`과 정확히 일치하고, 아키텍처(`tf_efficientnetv2_s`, `num_classes=2`)도 `best_iga_model.pth`의 strict load 결과와 일치해 실제 배포 모델의 학습 스크립트임을 확인했습니다. 다만 가중치 자체를 재학습해 bit-exact 비교한 것은 아니고 산출물 정합성으로 검증한 것입니다.
 
 </details>
 
