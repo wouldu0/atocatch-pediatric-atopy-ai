@@ -7,7 +7,6 @@ AtoCatch RAG 엔진 - Supabase pgvector 기반
 import os
 import re
 import requests
-import numpy as np
 
 # ── 상수 ──────────────────────────────────────────────
 _BASE_DIR     = os.path.dirname(os.path.abspath(__file__))

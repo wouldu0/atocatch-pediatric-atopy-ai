@@ -46,6 +46,12 @@ try:
 except ImportError:
     GRADCAM_OK = False
 
+try:
+    import rag_engine
+    RAG_OK = True
+except ImportError:
+    RAG_OK = False
+
 # DB 관리 함수
 def _load_json(path):
     try:
@@ -2451,6 +2457,14 @@ def render_result():
             )
 
 def render_guide():
+    if RAG_OK and OPENAI_API_KEY and not st.session_state.get("rag_indexed_once"):
+        with st.spinner("참고 자료를 준비하고 있습니다..."):
+            try:
+                rag_engine.auto_index_data_folder(OPENAI_API_KEY)
+            except Exception:
+                pass
+        st.session_state.rag_indexed_once = True
+
     # 챗봇 전용 CSS 강제 주입 (사용자 말풍선 글자색 흰색 강제 유지 및 Streamlit 스타일 무력화)
     st.markdown("""
         <style>
@@ -2646,10 +2660,17 @@ def render_guide():
                             )
                             
                         KNOWLEDGE_BASE = "보습은 목욕 후 3분 이내, 하루 2회 이상 실시합니다. 항생제 오남용은 장내미생물 균형을 깨트려 아토피를 악화시킬 수 있습니다."
-                        
+                        if RAG_OK:
+                            try:
+                                retrieved = rag_engine.retrieve(q_text, OPENAI_API_KEY, top_k=4)
+                                if retrieved:
+                                    KNOWLEDGE_BASE = "\n".join(f"- {r['text']}" for r in retrieved)
+                            except Exception:
+                                pass
+
                         system_prompt = f"""당신은 AtoCatch의 영유아 아토피 예방 전문 AI 상담사입니다.
                         현재 환자 상태: {context_info}
-                        기본 지식: {KNOWLEDGE_BASE}
+                        기본 지식(대한아토피피부염학회 2024 가이드라인 발췌): {KNOWLEDGE_BASE}
                         - 의학적 진단을 내리지 마세요. 예방 및 생활습관 관점에서 답변하세요.
                         - 3~5문장으로 짧게 작성하세요."""
                         
@@ -2700,10 +2721,17 @@ def render_guide():
                     )
                     
                 KNOWLEDGE_BASE = "보습은 목욕 후 3분 이내, 하루 2회 이상 실시합니다. 항생제 오남용은 장내미생물 균형을 깨트려 아토피를 악화시킬 수 있습니다."
-                
+                if RAG_OK:
+                    try:
+                        retrieved = rag_engine.retrieve(prompt, OPENAI_API_KEY, top_k=4)
+                        if retrieved:
+                            KNOWLEDGE_BASE = "\n".join(f"- {r['text']}" for r in retrieved)
+                    except Exception:
+                        pass
+
                 system_prompt = f"""당신은 AtoCatch의 영유아 아토피 예방 전문 AI 상담사입니다.
                 현재 환자 상태: {context_info}
-                기본 지식: {KNOWLEDGE_BASE}
+                기본 지식(대한아토피피부염학회 2024 가이드라인 발췌): {KNOWLEDGE_BASE}
                 - 의학적 진단을 내리지 마세요. 예방 및 생활습관 관점에서 답변하세요.
                 - 3~5문장으로 짧게 작성하세요."""
                 
