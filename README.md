@@ -38,7 +38,7 @@ AtoCatch는 **“누구에게, 언제 필요한 서비스인가?”**라는 질�
 
 **핵심 기능**
 
-- **피부 상태 분석** — 스마트폰 사진으로 아토피 의심 여부와 중증도를 분석하고, Grad-CAM으로 모델이 주목한 피부 영역을 표시
+- **피부 상태 분석** — 스마트폰 사진으로 아토피 의심 여부와 중증도를 분석하고, Grad-CAM++로 모델이 주목한 피부 영역을 표시
 - **설문 위험도 확인** — 부모 병력·환경 노출 등 11개 변수로 아토피 발병 위험을 저/중/고 3단계로 안내
 - **홈케어 정보 제공** — 임상 가이드라인을 검색해 답변하는 RAG 챗봇과 분석 이력 기록
 
@@ -219,7 +219,7 @@ Python 3.10+ · PyTorch · timm (EfficientNetV2-S) · scikit-learn · Streamlit 
 AtoCatch/
 ├── app/                              # Streamlit 웹 앱 (streamlit run app/app_main.py 로만 실행)
 │   ├── app_main.py                   # 메인 앱 (로그인·회원가입·홈·설문·이미지 분석·챗봇·기록 전부 포함)
-│   ├── gradcam_module.py             # Grad-CAM 시각화 모듈
+│   ├── gradcam_module.py             # Grad-CAM++ 시각화 모듈
 │   ├── rag_engine.py                 # RAG 챗봇 엔진
 │   ├── model_config.json             # 현재 배포 아토피 유무 모델의 threshold·성능 메타데이터
 │   ├── model_config2.json            # 중증도 모델 메타데이터

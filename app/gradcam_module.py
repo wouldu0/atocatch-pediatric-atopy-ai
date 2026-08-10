@@ -1,6 +1,6 @@
 """
-gradcam_module.py — AtoCatch Grad-CAM 모듈
-EfficientNetV2 기반 아토피 여부 + IGA 중증도 모델에 Grad-CAM 적용
+gradcam_module.py — AtoCatch Grad-CAM++ 시각화 모듈
+EfficientNetV2 기반 아토피 여부 + IGA 중증도 모델에 Grad-CAM++ 적용
 
 사용법:
     from gradcam_module import load_models, predict_with_gradcam
