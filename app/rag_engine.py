@@ -17,15 +17,15 @@ CHUNK_OVERLAP = 80
 TOP_K         = 4
 
 
-# ── Supabase 클라이언트 ───────────────────────────────
+# ── Supabase 클라이언트 (secret 키 — RLS 우회, 관리자용 인덱싱 작업 전용) ──
 def _get_supabase():
     try:
         import streamlit as st
         url = st.secrets["SUPABASE_URL"]
-        key = st.secrets["SUPABASE_KEY"]
+        key = st.secrets["SUPABASE_SECRET_KEY"]
     except Exception:
         url = os.getenv("SUPABASE_URL", "")
-        key = os.getenv("SUPABASE_KEY", "")
+        key = os.getenv("SUPABASE_SECRET_KEY", "")
 
     from supabase import create_client
     return create_client(url, key)

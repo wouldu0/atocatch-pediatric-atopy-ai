@@ -3,7 +3,6 @@ import streamlit as st
 import time
 import os
 import json
-import hashlib
 import joblib
 import pandas as pd
 import numpy as np
@@ -32,8 +31,6 @@ st.set_page_config(layout="wide", page_title="AtoCatch", initial_sidebar_state="
 st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE   = os.path.join(_BASE_DIR, "atocatch_users.json")
-HIST_FILE = os.path.join(_BASE_DIR, "atocatch_history.json")
 
 try:
     OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
@@ -52,51 +49,87 @@ try:
 except ImportError:
     RAG_OK = False
 
-# DB 관리 함수
-def _load_json(path):
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+# ── Supabase Auth / DB (로그인, 분석 기록) ──────────────────
+# publishable 키만 사용 — RLS를 우회하는 secret 키(rag_engine.py 전용)와는 분리.
+# 각 요청은 로그인한 사용자의 access token으로 인증되어, RLS가 본인 데이터만 노출한다.
+try:
+    from supabase import create_client as _create_supabase_client
+    _SUPABASE_PKG_OK = True
+except ImportError:
+    _SUPABASE_PKG_OK = False
 
-def _save_json(path, data):
-    import tempfile
-    dir_name = os.path.dirname(path)
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+except Exception:
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+
+try:
+    SUPABASE_PUBLISHABLE_KEY = st.secrets["SUPABASE_PUBLISHABLE_KEY"]
+except Exception:
+    SUPABASE_PUBLISHABLE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
+
+SUPABASE_AUTH_OK = _SUPABASE_PKG_OK and bool(SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY)
+
+def _get_auth_client():
+    return _create_supabase_client(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+
+def _get_user_client():
+    """RLS 적용 상태로 현재 로그인한 사용자의 access token을 실어 보내는 클라이언트."""
+    client = _get_auth_client()
+    client.postgrest.auth(st.session_state.sb_access_token)
+    return client
+
+def sb_sign_up(email, password, name):
+    return _get_auth_client().auth.sign_up({
+        "email": email, "password": password,
+        "options": {"data": {"name": name}}
+    })
+
+def sb_sign_in(email, password):
+    return _get_auth_client().auth.sign_in_with_password({"email": email, "password": password})
+
+def add_history(record_type, detail, extra=None):
+    if not SUPABASE_AUTH_OK or not st.session_state.get("sb_access_token"):
+        return
     try:
-        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        if os.path.exists(path):
-            try: os.replace(path, path + ".bak")
-            except: pass
-        os.rename(tmp_path, path)
-        if os.path.exists(path + ".bak"):
-            try: os.remove(path + ".bak")
-            except: pass
+        row = {
+            "user_id": st.session_state.sb_user_id,
+            "record_type": record_type,
+            "detail": detail,
+        }
+        if extra:
+            extra = dict(extra)
+            if "image_b64" in extra:
+                row["image_base64"] = extra.pop("image_b64")
+            if "gradcam_b64" in extra:
+                row["gradcam_base64"] = extra.pop("gradcam_b64")
+            if extra:
+                row["prediction"] = extra
+        _get_user_client().table("analysis_history").insert(row).execute()
     except Exception:
         pass
 
-def hash_pw(pw): return hashlib.sha256(pw.encode()).hexdigest()
-def load_users(): return _load_json(DB_FILE)
-def save_users(data): _save_json(DB_FILE, data)
-def load_history(): return _load_json(HIST_FILE)
-def save_history(data): _save_json(HIST_FILE, data)
-
-def add_history(username, record_type, detail, extra=None):
+def load_history():
+    if not SUPABASE_AUTH_OK or not st.session_state.get("sb_access_token"):
+        return []
     try:
-        hist = load_history()
-        if username not in hist: hist[username] = []
-        entry = {
-            "type": record_type,
-            "detail": detail,
-            "time": datetime.now().strftime("%Y-%m-%d %H:%M")
-        }
-        if extra: entry.update(extra)
-        hist[username].append(entry)
-        hist[username] = hist[username][-50:]
-        save_history(hist)
-    except: pass
+        res = (
+            _get_user_client().table("analysis_history")
+            .select("*")
+            .eq("user_id", st.session_state.sb_user_id)
+            .order("created_at", desc=True)
+            .limit(50)
+            .execute()
+        )
+        return res.data or []
+    except Exception:
+        return []
+
+def _fmt_time(rec):
+    try:
+        return datetime.fromisoformat(rec["created_at"]).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return rec.get("created_at", "")
 
 def generate_html_report(display_name, time_str, detail, image_b64=None, gradcam_b64=None):
     html_content = f"""
@@ -369,7 +402,6 @@ ADVICE = {
 }
 
 # ----------------- 세션 상태 관리 -----------------
-if 'user_db' not in st.session_state: st.session_state.user_db = load_users()
 if 'is_logged_in' not in st.session_state: st.session_state.is_logged_in = False
 if 'auth_page' not in st.session_state: st.session_state.auth_page = 'login'
 if 'current_page' not in st.session_state: st.session_state.current_page = "홈"
@@ -573,13 +605,19 @@ def render_login():
         password = st.text_input("비밀번호", type="password", placeholder="••••••••")
         
         if st.button("로그인", use_container_width=True, type="primary"):
-            if email in st.session_state.user_db and st.session_state.user_db[email].get("password") == hash_pw(password):
-                st.session_state.is_logged_in = True
-                st.session_state.username = email
-                st.session_state.display_name = st.session_state.user_db[email].get("name", email)
-                st.rerun()
+            if not SUPABASE_AUTH_OK:
+                st.error("로그인 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.")
             else:
-                st.error("이메일 또는 비밀번호가 일치하지 않습니다.")
+                try:
+                    result = sb_sign_in(email, password)
+                    st.session_state.is_logged_in = True
+                    st.session_state.username = result.user.email
+                    st.session_state.display_name = (result.user.user_metadata or {}).get("name", result.user.email)
+                    st.session_state.sb_user_id = result.user.id
+                    st.session_state.sb_access_token = result.session.access_token
+                    st.rerun()
+                except Exception:
+                    st.error("이메일 또는 비밀번호가 일치하지 않습니다.")
         
         st.write("")
         st.write("")
@@ -643,17 +681,19 @@ def render_signup():
                 st.error("비밀번호가 일치하지 않습니다.")
             elif not agree:
                 st.warning("약관에 동의해 주세요.")
-            elif email in st.session_state.user_db:
-                st.error("이미 존재하는 이메일입니다.")
             elif not email or not password:
                 st.error("모든 항목을 입력해 주세요.")
+            elif not SUPABASE_AUTH_OK:
+                st.error("회원가입 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.")
             else:
-                st.session_state.user_db[email] = {"password": hash_pw(password), "name": name}
-                save_users(st.session_state.user_db)
-                st.success("🎉 회원가입 완료! 로그인 페이지로 이동합니다.")
-                time.sleep(1.5)
-                st.session_state.auth_page = 'login'
-                st.rerun()
+                try:
+                    sb_sign_up(email, password, name)
+                    st.success("🎉 회원가입 완료! 로그인 페이지로 이동합니다.")
+                    time.sleep(1.5)
+                    st.session_state.auth_page = 'login'
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"회원가입에 실패했습니다: {e}")
                 
         st.write("")
         st.write("")
@@ -1628,7 +1668,7 @@ def render_survey():
                     "prob": prob, "level": level, "inputs": inputs_dict
                 }
                 add_history(
-                    st.session_state.username, "설문조사",
+                    "설문조사",
                     f"위험도: {level} ({prob*100:.1f}%)"
                 )
                 st.session_state.current_page = "피부 스캔"
@@ -1781,7 +1821,7 @@ def render_image_scan():
                         iga_txt = "중등도·중증" if iga_severe else "경증 이하"
                         atopy_txt += f" / IGA {iga_txt} ({iga_prob*100:.1f}%)"
                         
-                    add_history(st.session_state.username, "이미지분석", atopy_txt, extra=extra_data)
+                    add_history("이미지분석", atopy_txt, extra=extra_data)
                     st.success("✅ AI 피부 분석이 완료되었습니다!")
                     
             if st.session_state.img_result:
@@ -2755,13 +2795,13 @@ def render_guide():
         st.rerun()
 
 def render_history():
-    my_hist = load_history().get(st.session_state.username, [])
-    
+    my_hist = load_history()  # created_at 내림차순(최신 먼저), 이미 본인 기록만(RLS + user_id 필터)
+
     if not my_hist:
         st.markdown("<h2>📋 우리 아이 아토피 상태 기록보기</h2>", unsafe_allow_html=True)
         st.info("아직 저장된 분석 기록이 없습니다.")
         return
-        
+
     # 헤더와 다운로드 버튼을 나란히 배치 (2.3:0.7 비율)
     col_title, col_btn = st.columns([2.3, 0.7])
     with col_title:
@@ -2777,15 +2817,18 @@ def render_history():
             use_container_width=True,
             type="secondary"
         )
-        
-    # 이미지 분석 기록만 추출하여 그래프 그리기
-    img_recs = [r for r in my_hist if r.get("type") == "이미지분석" and "atopy_prob" in r]
-    
+
+    # 이미지 분석 기록만 추출하여 그래프 그리기 (시간순 정렬을 위해 오래된 순으로 뒤집음)
+    img_recs = list(reversed([
+        r for r in my_hist
+        if r.get("record_type") == "이미지분석" and r.get("prediction", {}).get("atopy_prob") is not None
+    ]))
+
     if img_recs:
         st.markdown("<h4 class='notranslate' style='margin-top:20px; margin-bottom:15px; color:#000000 !important; font-size:22px !important; font-weight:900 !important;'>📈 AI 예측 모델 기반 아토피 위험도 발생 추이</h4>", unsafe_allow_html=True)
-        
-        dates = [r["time"] for r in img_recs]
-        probs = [r["atopy_prob"] * 100 for r in img_recs]
+
+        dates = [_fmt_time(r) for r in img_recs]
+        probs = [r["prediction"]["atopy_prob"] * 100 for r in img_recs]
         
         # 데모 현장에서의 변동성 연출을 위해 미세한 실시간 업다운 부여 (단조로운 일직선 탈피)
         if len(probs) > 1:
@@ -2839,56 +2882,56 @@ def render_history():
     st.markdown("<hr style='margin: 2rem 0;'>", unsafe_allow_html=True)
     st.markdown("<h4 style='margin-bottom:15px; color:#111;'>🗂 분석 기록 상세 목록</h4>", unsafe_allow_html=True)
     
-    for idx, rec in enumerate(reversed(my_hist)):
-        icon = "📊" if rec.get("type") == "설문조사" else ("📷" if rec.get("type") == "이미지분석" else "📝")
-        with st.expander(f"{icon} {rec['time']} - {rec['type']}"):
+    for rec in my_hist:  # load_history()가 이미 최신순으로 반환
+        rec_id = rec["id"]
+        rec_time = _fmt_time(rec)
+        record_type = rec.get("record_type")
+        icon = "📊" if record_type == "설문조사" else ("📷" if record_type == "이미지분석" else "📝")
+        with st.expander(f"{icon} {rec_time} - {record_type}"):
             st.markdown(f"<div style='font-size:1.05rem; font-weight:600; color:#334155; margin-bottom:12px;'>분석 결과: {rec['detail']}</div>", unsafe_allow_html=True)
-            
+
             # 이미지 분석 사진 표시 (원본 및 히트맵)
-            if rec.get("type") == "이미지분석" and ("image_b64" in rec or "gradcam_b64" in rec):
+            if record_type == "이미지분석" and (rec.get("image_base64") or rec.get("gradcam_base64")):
                 st.markdown("<div style='margin: 15px 0;'>", unsafe_allow_html=True)
                 col_orig, col_grad = st.columns(2)
                 with col_orig:
-                    if "image_b64" in rec:
-                        st.image(f"data:image/jpeg;base64,{rec['image_b64']}", caption="원본 피부 사진", use_container_width=True)
+                    if rec.get("image_base64"):
+                        st.image(f"data:image/jpeg;base64,{rec['image_base64']}", caption="원본 피부 사진", use_container_width=True)
                 with col_grad:
-                    if "gradcam_b64" in rec:
-                        st.image(f"data:image/jpeg;base64,{rec['gradcam_b64']}", caption="AI 분석 히트맵 (Grad-CAM)", use_container_width=True)
+                    if rec.get("gradcam_base64"):
+                        st.image(f"data:image/jpeg;base64,{rec['gradcam_base64']}", caption="AI 분석 히트맵 (Grad-CAM)", use_container_width=True)
                 st.markdown("</div>", unsafe_allow_html=True)
-                
+
             st.markdown("<hr style='margin: 12px 0; border-color: #f1f5f9;'>", unsafe_allow_html=True)
-            
+
             # 개별 기록 삭제 및 HTML 다운로드 버튼
-            real_idx = len(my_hist) - 1 - idx
             col_space, col_dl, col_del = st.columns([4, 1.5, 1.2])
             with col_dl:
-                if rec.get("type") == "이미지분석":
+                if record_type == "이미지분석":
                     rec_html = generate_html_report(
                         display_name=st.session_state.display_name,
-                        time_str=rec.get("time", ""),
+                        time_str=rec_time,
                         detail=rec.get("detail", ""),
-                        image_b64=rec.get("image_b64"),
-                        gradcam_b64=rec.get("gradcam_b64")
+                        image_b64=rec.get("image_base64"),
+                        gradcam_b64=rec.get("gradcam_base64")
                     )
                     st.download_button(
                         label="📄 HTML 보고서 받기",
                         data=rec_html,
-                        file_name=f"atocatch_report_{rec.get('time', '').replace(' ', '_').replace(':', '')}.html",
+                        file_name=f"atocatch_report_{rec_time.replace(' ', '_').replace(':', '')}.html",
                         mime="text/html",
-                        key=f"dl_{real_idx}",
+                        key=f"dl_{rec_id}",
                         use_container_width=True
                     )
             with col_del:
-                if st.button("🗑 이 기록 삭제", key=f"del_{real_idx}", type="secondary", use_container_width=True):
-                    hist = load_history()
-                    if st.session_state.username in hist:
-                        user_hist = hist[st.session_state.username]
-                        if 0 <= real_idx < len(user_hist):
-                            user_hist.pop(real_idx)
-                            save_history(hist)
-                            st.success("기록이 성공적으로 삭제되었습니다.")
-                            time.sleep(0.5)
-                            st.rerun()
+                if st.button("🗑 이 기록 삭제", key=f"del_{rec_id}", type="secondary", use_container_width=True):
+                    try:
+                        _get_user_client().table("analysis_history").delete().eq("id", rec_id).execute()
+                        st.success("기록이 성공적으로 삭제되었습니다.")
+                        time.sleep(0.5)
+                        st.rerun()
+                    except Exception:
+                        st.error("기록 삭제에 실패했습니다.")
 
 # ==========================================
 # 앱 실행 컨트롤러
@@ -2949,6 +2992,8 @@ def main():
             if st.button("로그아웃", use_container_width=True):
                 st.session_state.is_logged_in = False
                 st.session_state.current_page = "홈"
+                st.session_state.pop("sb_access_token", None)
+                st.session_state.pop("sb_user_id", None)
                 st.rerun()
                 
         st.markdown("<hr style='margin-top: 0px; margin-bottom: 0.5rem; border-color: #E2E8F0;'>", unsafe_allow_html=True)
