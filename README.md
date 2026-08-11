@@ -201,22 +201,24 @@ Kaplan-Meier와 Cox 모델도 탐색했지만, 분석 방법에 따라 유의한
 <details>
 <summary>IGA 모델 재검증과 재학습 결과 보기</summary>
 
-기존 IGA 모델은 이미지 단위 랜덤 split(Train∩Test 중복 base-id 11개, Test 180장 중 23장 영향)에서, threshold(0.38)까지 test set에서 탐색한 뒤 같은 test set에 적용해 성능을 보고하고 있었습니다. split은 그대로 두고 threshold만 validation 기준으로 다시 선택해도 Accuracy가 83.9%→78.3%로 낮아져, 기존 수치에 leakage와 threshold snooping 두 가지 문제가 함께 섞여 있었음을 확인했습니다.
+기존 IGA 모델은 이미지 단위 랜덤 split에서 **동일 base-id를 공유하는 연관 이미지(P/L suffix만 다름)가 Train/Test에 걸쳐 존재**했습니다(Train∩Test 중복 base-id 11개, Test 180장 중 23장 영향 — 합성 데이터라 base-id가 실제 동일 환자를 의미한다고 단정하지는 않으며, base-id overlap으로만 표기합니다). 여기에 더해 **threshold(0.38)를 test set에서 탐색한 뒤 같은 test set에 적용해 성능을 보고**하고 있었습니다. split은 그대로 두고 threshold만 validation 기준으로 다시 선택해보면 Accuracy가 83.9%→78.3%로 낮아져(같은 split, threshold 선택 방식만 다름), threshold snooping만으로도 상당한 영향이 있었음을 확인했습니다.
 
 | | 기존 (랜덤 split, test로 threshold 선택) | 재학습 (base-id 그룹 보존, validation으로 threshold 선택) |
 |---|---:|---:|
 | Threshold | 0.38 | 0.6438 |
-| Accuracy | 83.9% | 77.9% |
-| F1 | 83.7% | 79.7% |
+| Accuracy | 83.9%<sup>[※]</sup> | 77.9% |
+| F1 | 83.7%<sup>[※]</sup> | 79.7% |
 | AUC | 0.876 | **0.925** |
 | Sensitivity | 90.6% | 74.7% |
-| Specificity | 61.9% | **89.7%** |
+| Specificity | 61.9%<sup>[※]</sup> | **89.7%** |
 
-Accuracy·Sensitivity가 낮아진 건 성능이 나빠졌다기보다, leakage와 test-set threshold snooping으로 부풀려져 있던 수치가 정상화되고 동시에 threshold 자체가 specificity 쪽으로 이동한 결과입니다(같은 재학습 모델을 threshold 0.5로 보면 Accuracy 84.0%, Sensitivity 85.2%). Threshold·split 방식과 무관한 AUC는 0.876 → **0.925**로 개선됐습니다.
+<sup>[※]</sup> 원래 배포 시점에 저장된 `model_config.json`에는 이 값이 Accuracy 84.44% / F1 84.31% / Specificity 64.29%로 남아있어, 위 표의 값(사후 감사 시점에 동일 threshold=0.38로 재평가한 수치)과 소수점 단위로 다릅니다. AUC(0.8758)와 Sensitivity(90.58%)는 두 시점에서 정확히 일치해 같은 모델임은 분명하지만, 데이터를 다시 수집·분할하는 과정에서 파일 목록 순서 등으로 test set 구성이 미세하게 달라졌을 가능성이 있습니다. 이 표는 재학습 모델과 직접 비교하기 위해 재감사 시점 수치(83.9%)를 사용했습니다.
+
+**Accuracy·Sensitivity 변화에는 base-id 그룹 보존에 따른 test 구성 변화와, validation 기준으로 이동한 threshold가 함께 영향을 주었습니다.** 기존 수치가 어느 정도 과대평가되어 있었는지를 두 요인으로 분리해 단정하기는 어렵지만, corrected 평가에서는 split 독립성(Train∩Test overlap = 0)과 threshold 선택 절차(test가 아닌 validation에서 결정) 자체를 개선했습니다. 두 요인 모두와 무관한 AUC는 0.876 → **0.925**로 개선됐습니다(참고로 같은 재학습 모델을 threshold 0.5로 보면 Accuracy 84.0%, Sensitivity 85.2%).
 
 - 기존 파이프라인: `train_iga_severity.py`(학습) → `eval_iga_threshold_search.py`/`eval_iga_final.py`(문제가 있던 threshold 선택 방식)
 - 재학습: `train_iga_grouped_final.py` (base-id 그룹 보존 split + validation threshold 선택, 나머지 학습 설정은 동일)
-- 결과는 seed=42 1회 실행 기준이라, AUC 개선이 leakage 제거 효과인지 test set 자체가 달라진 효과인지는 이 실험만으로 단정할 수 없습니다.
+- 결과는 seed=42 1회 실행 기준이라, AUC 개선이 base-id overlap 제거 효과인지 test set 자체가 달라진 효과인지는 이 실험만으로 단정할 수 없습니다.
 
 </details>
 
