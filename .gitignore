@@ -1,0 +1,30 @@
+# 환경 / 시크릿
+.env
+**/.env
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 학습 중간 산출물 (outputs/는 gitignore, manifests/는 유지)
+training/image_classification/outputs/
+
+# 설문 모델 — 원본 row-level 파생 CSV (라이선스 제한, README "데이터" 참고)
+app/survey_model/merged.csv
+
+# 신규 모델 가중치는 기본적으로 무시 — 단, app/*.pth 등 이미 git에 커밋된
+# 배포 가중치는 tracked 파일이라 이 규칙과 무관하게 계속 추적/갱신됩니다.
+*.pth
+*.pt
+*.pkl
+*.joblib

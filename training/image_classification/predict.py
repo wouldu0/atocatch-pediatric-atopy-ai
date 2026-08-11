@@ -1,18 +1,37 @@
+"""
+단일 이미지에서 아토피 유무를 예측하는 추론 스크립트.
+모델 가중치: app/best_model.pth
+설정:       app/model_config.json (threshold, model_name, img_size)
+"""
+
+import os
+import json
 import torch
 import timm
 from torchvision import transforms
 from PIL import Image
 
-# ── 설정 ──
-MODEL_PATH = r"E:\atopic\models\binary_grouped_split\tf_efficientnetv2_s\best_model.pth"
-THRESHOLD = 0.2739  # Youden's J 최적값 (base-id 그룹 보존 split으로 재학습한 모델 기준)
-IMG_SIZE = 224
-LABEL_NAMES = ["non_atopy", "atopy"]
+# ── repo 루트 기준 경로 ──
+_HERE      = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.dirname(os.path.dirname(_HERE))
+_APP_DIR   = os.path.join(_REPO_ROOT, "app")
+
+_CFG_PATH   = os.path.join(_APP_DIR, "model_config.json")
+_MODEL_PATH = os.path.join(_APP_DIR, "best_model.pth")
+
+# ── model_config.json에서 설정 로드 ──
+with open(_CFG_PATH, encoding="utf-8") as _f:
+    _cfg = json.load(_f)
+
+THRESHOLD   = _cfg["threshold"]
+MODEL_NAME  = _cfg.get("model_name", "tf_efficientnetv2_s")
+IMG_SIZE    = _cfg.get("img_size", 224)
+LABEL_NAMES = _cfg.get("label_names", ["non_atopy", "atopy"])
 
 # ── 모델 로드 ──
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = timm.create_model("tf_efficientnetv2_s", pretrained=False, num_classes=2).to(device)
-model.load_state_dict(torch.load(MODEL_PATH, weights_only=True))
+model  = timm.create_model(MODEL_NAME, pretrained=False, num_classes=2).to(device)
+model.load_state_dict(torch.load(_MODEL_PATH, weights_only=True, map_location=device))
 model.eval()
 
 transform = transforms.Compose([
@@ -21,18 +40,18 @@ transform = transforms.Compose([
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
-def predict(image_path):
-    image = Image.open(image_path).convert("RGB")
-    tensor = transform(image).unsqueeze(0).to(device)
 
+def predict(image_path: str) -> dict:
+    """이미지 파일 경로를 받아 {'label', 'atopy_prob', 'threshold'} 반환."""
+    img    = Image.open(image_path).convert("RGB")
+    tensor = transform(img).unsqueeze(0).to(device)
     with torch.no_grad():
-        output = model(tensor)
-        prob = torch.softmax(output, dim=1)[0, 1].item()  # 아토피 확률
-
-    label = "atopy" if prob >= THRESHOLD else "non_atopy"
+        out  = model(tensor)
+        prob = torch.softmax(out, dim=1)[0, 1].item()
+    label = LABEL_NAMES[1] if prob >= THRESHOLD else LABEL_NAMES[0]
     return {"label": label, "atopy_prob": prob, "threshold": THRESHOLD}
 
-# ── 테스트 ──
+
 if __name__ == "__main__":
     import sys
     path = sys.argv[1] if len(sys.argv) > 1 else None

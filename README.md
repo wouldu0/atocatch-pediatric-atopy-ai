@@ -237,6 +237,10 @@ Python 3.10+ · PyTorch · timm (EfficientNetV2-S) · scikit-learn · Streamlit 
 | 영유아 패널 데이터 | 한국아동패널 (1~10차) | N=1,967명 | 설문 위험도 모델 학습 |
 
 > ⚠️ AI Hub 데이터는 라이선스 제한으로 레포지토리에 포함되지 않습니다. DermNet NZ 크롤러는 `training/image_classification/data_crawl_dermnet.py`에서 확인할 수 있습니다(DermNet NZ 저작권 하에 있으므로 재사용 시 출처를 명시하세요).
+>
+> 📎 원본 이미지는 올리지 않지만, raw 데이터를 정리하기 전에 실제 배포 모델을 만든 정확한 학습/검증/평가 파일 목록을 `training/image_classification/manifests/`에 상대경로 + SHA-256 해시로 보존해뒀습니다. binary 모델은 `recover_and_validate_split.py`로 candidate split을 재구성한 뒤 배포 모델(`best_model.pth`)로 다시 추론해 기존 `final_summary.json` 수치와 대조했고, 모든 지표가 완전히 일치해 `RECOVERED_FINAL_SPLIT`(3,865행)으로 판정했습니다. IGA 모델은 `iga_grouped_split_seed42.csv`(1,800행)와 `iga_split_verification.json`으로 train/val/test 간 base-id overlap이 0임을 확인해뒀습니다. 학습 환경은 `environment_snapshot.txt`(pip freeze)로 함께 남겼습니다.
+>
+> 한국아동패널 row-level 파생 데이터(`merged.csv`)는 라이선스 확인이 끝나지 않아 공개 저장소에서는 제외했습니다. 필요 시 `training/survey_model/data_merge.py`로 공식 원자료(PSKC)에서 재생성할 수 있습니다.
 
 ---
 
@@ -256,7 +260,7 @@ AtoCatch/
 │   ├── requirements.txt
 │   ├── design/                       # UI 이미지 에셋
 │   ├── screenshots/                  # 앱 스크린샷
-│   └── survey_model/                 # 설문 모델 계수·학습 데이터
+│   └── survey_model/                 # 설문 모델 계수 (merged.csv는 라이선스 이슈로 비공개 — 위 "데이터" 참고)
 │
 └── training/                         # 모델 학습 코드
     ├── image_classification/
@@ -271,7 +275,10 @@ AtoCatch/
     │   ├── eval_iga_threshold_search.py  # (구) IGA threshold 탐색 — test set에서 선택하던 버전
     │   ├── eval_iga_final.py             # (구) IGA 최종 평가 — threshold=0.38, test set 기준
     │   ├── train_iga_grouped_final.py    # 현재 배포 모델(best_iga_model.pth) 실제 학습 스크립트
-    │   ├── predict.py                    # 단일 이미지 추론 (현재 배포 모델 사용)
+    │   ├── predict.py                    # 단일 이미지 추론 (app/model_config.json 기준 동적 로드)
+    │   ├── recover_and_validate_split.py # raw 삭제 전, binary 모델의 정확한 split 복원·검증
+    │   ├── manifests/                    # 보존된 split 파일 목록 (상대경로 + SHA-256, 절대경로 없음)
+    │   ├── environment_snapshot.txt      # 학습 환경 pip freeze 스냅샷
     │   ├── data_setup.py / data_split.py / data_split_raw.py / data_prepare.py / data_matching.py
     │   ├── utils_gradcam.py              # Grad-CAM 모듈
     │   ├── utils_threshold.py            # 임계값 최적화 (Youden's J)
@@ -333,7 +340,9 @@ streamlit run app_main.py
 - AI Hub base-id leakage 발견 → grouped split 재학습 → 배포 모델 교체 (위 "모델 검증과 의사결정" 참고)
 - IGA 중증도 모델의 원본 학습 스크립트를 별도 백업에서 발견 → 같은 base-id leakage에 더해 test-set threshold snooping까지 확인 → 두 문제 모두 고쳐 재학습 → 배포 모델 교체 (위 "모델 검증과 의사결정 5" 참고)
 - 설문 모델 outcome(Y) 정의를 공식 코드북과 대조해 방법론적 한계 발견·투명하게 공개 (위 참고)
-- 재학습 스크립트의 출력 경로 등 프로젝트 내부 경로를 상대경로로 정리 (AI Hub/DermNet 원본처럼 레포에 없는 외부 대용량 데이터 루트는 다른 학습 스크립트들과 동일하게 사용자가 직접 지정하는 절대경로로 유지)
+- 재학습 스크립트의 출력 경로 등 프로젝트 내부 경로를 상대경로로 정리 (AI Hub/DermNet 원본처럼 레포에 없는 외부 대용량 데이터 루트는 다른 학습 스크립트들과 동일하게 사용자가 직접 지정하는 절대경로로 유지), `predict.py`도 개인 PC 절대경로·threshold 하드코딩을 없애고 `app/model_config.json` 기준으로 동적 로드하도록 수정
+- `.gitignore` 추가 (`.env`, 학습 중간 산출물, `merged.csv` 등 — 지금까지 실제로 커밋된 시크릿은 없었음)
+- raw 이미지 데이터를 정리하기 전, 배포 모델을 만든 정확한 파일 목록을 `training/image_classification/manifests/`에 보존 (자세한 내용은 위 "데이터" 참고)
 - **Grad-CAM 시각화 오류 발견 → Grad-CAM++로 교체**: 실제 사진으로 확인해보니 바닐라 Grad-CAM이 병변이 아닌 정상 피부에 핫스팟을 찍는 경우가 반복돼, 같은 타겟 레이어를 유지한 채 채널별 2차 미분 가중치를 쓰는 Grad-CAM++로 교체(재학습 없이 시각화 가중치 공식만 변경). 실행 테스트로 개선 확인, 다만 완전히 해결된 것은 아님(아래 "한계" 참고)
 
 </details>

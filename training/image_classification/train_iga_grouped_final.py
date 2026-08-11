@@ -18,7 +18,21 @@ IGA 중증도 모델 corrected methodology 재학습 (seed=42)
   - checkpoint 기준: best val_acc
   - seed=42
 
-결과 저장: E:\\atopic\\IGA_CORRECTED_EXPORT\\ (원본 실행 환경 기준, 로컬 경로)
+입력 경로: AI Hub raw 데이터 루트는 사용자 환경에 따라 다르므로, 아래 LABEL_ROOTS/
+  IMG_ROOTS에 본인 환경에 맞는 절대경로를 직접 지정한다 (레포에 포함되지 않는
+  외부 대용량 데이터라 다른 학습 스크립트들과 동일하게 절대경로로 유지).
+
+출력 (EXPORT_DIR 기준 — 기본: training/image_classification/outputs/iga_grouped_final/,
+  IGA_EXPORT_DIR 환경변수로 재정의 가능):
+  iga_grouped_split_seed42.csv    — 이미지별 split 정보 (1800행 기준)
+  models/best_iga_corrected.pth   — 최종 checkpoint (val acc 기준)
+  results/final_metrics.json      — 전체 성능 + 기존 모델 비교
+  results/training_curve.png / roc_curve.png / pr_curve.png / cm_thr05.png / cm_thr_val.png
+  validation_threshold_search.csv — validation threshold 후보별 metric
+
+주의:
+  - 기존 IGA 모델(app/의 best_iga_model.pth 등)은 이 스크립트를 실행해도 건드리지 않는다.
+  - 재현성: seed=42 — 동일 Python/PyTorch/timm 버전 + 동일 파일 순서에서만 보장.
 
 ── 배포 반영 (포트폴리오 정리 중) ──────────────────────────
 이 스크립트가 만든 best_iga_grouped_seed42.pth를 app/best_iga_model.pth로,
@@ -78,7 +92,12 @@ VAL_RATIO       = 0.2
 LABEL_NAMES     = ["mild_or_below", "moderate_severe"]
 IGA_MAP         = {"Clear": 0, "Almost Clear": 0, "Mild": 0, "Moderate": 1, "Severe": 1}
 
-EXPORT_DIR      = r"E:\atopic\IGA_CORRECTED_EXPORT"
+# 출력 경로 (repo 기준 상대경로, IGA_EXPORT_DIR 환경변수로 재정의 가능)
+REPO_ROOT       = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+EXPORT_DIR      = os.getenv(
+    "IGA_EXPORT_DIR",
+    os.path.join(REPO_ROOT, "training", "image_classification", "outputs", "iga_grouped_final"),
+)
 MODELS_DIR      = os.path.join(EXPORT_DIR, "models")
 RESULTS_DIR     = os.path.join(EXPORT_DIR, "results")
 

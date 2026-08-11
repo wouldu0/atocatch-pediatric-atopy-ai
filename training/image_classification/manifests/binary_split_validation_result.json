@@ -1,0 +1,91 @@
+{
+  "verdict": "RECOVERED_FINAL_SPLIT",
+  "tol": 0.001,
+  "n_match": true,
+  "sample_counts": {
+    "train_aihub": 2506,
+    "train_dermnet": 157,
+    "train_total": 2663,
+    "val": 726,
+    "test_internal": 368,
+    "dermnet_holdout": 108
+  },
+  "reference_n": {
+    "n_train": 2663,
+    "n_val": 726,
+    "n_test_internal": 368,
+    "n_test_external": 108
+  },
+  "internal_test": {
+    "threshold": 0.5,
+    "actual": {
+      "acc": 0.9511,
+      "f1": 0.9511,
+      "auc": 0.9874,
+      "sensitivity": 0.9286,
+      "specificity": 0.9731,
+      "cm": [
+        [
+          181,
+          5
+        ],
+        [
+          13,
+          169
+        ]
+      ],
+      "n": 368,
+      "n_pos": 182
+    },
+    "reference": {
+      "acc": 0.9511,
+      "f1": 0.9511,
+      "auc": 0.9874
+    },
+    "diffs": {
+      "acc": 0.0,
+      "f1": 0.0,
+      "auc": 0.0
+    },
+    "match": true
+  },
+  "dermnet_holdout": {
+    "youden_threshold_actual": 0.27393072843551636,
+    "youden_threshold_ref": 0.27393072843551636,
+    "actual": {
+      "acc": 0.7963,
+      "f1": 0.8093,
+      "auc": 0.8391,
+      "sensitivity": 0.8846,
+      "specificity": 0.7683,
+      "cm": [
+        [
+          63,
+          19
+        ],
+        [
+          3,
+          23
+        ]
+      ],
+      "n": 108,
+      "n_pos": 26
+    },
+    "reference": {
+      "acc": 0.7963,
+      "f1": 0.8093,
+      "auc": 0.8391,
+      "sensitivity": 0.8846,
+      "specificity": 0.7683
+    },
+    "diffs": {
+      "acc": 0.0,
+      "f1": 0.0,
+      "auc": 0.0,
+      "sensitivity": 0.0,
+      "specificity": 0.0
+    },
+    "match": true
+  },
+  "manifest_path": "C:/Users/asia/contest_AtoCatch/training/image_classification/manifests/binary_split_candidate_seed42.csv"
+}

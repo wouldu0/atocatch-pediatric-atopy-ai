@@ -1,0 +1,34 @@
+{
+  "seed": 42,
+  "method": "base-id group-preserving split",
+  "train": {
+    "n_images": 1263,
+    "n_base_ids": 1184,
+    "mild_or_below": 308,
+    "moderate_severe": 955,
+    "front_view": 627,
+    "side_view": 636
+  },
+  "validation": {
+    "n_images": 356,
+    "n_base_ids": 338,
+    "mild_or_below": 69,
+    "moderate_severe": 287,
+    "front_view": 182,
+    "side_view": 174
+  },
+  "test": {
+    "n_images": 181,
+    "n_base_ids": 170,
+    "mild_or_below": 39,
+    "moderate_severe": 142,
+    "front_view": 91,
+    "side_view": 90
+  },
+  "overlap": {
+    "train_val": 0,
+    "train_test": 0,
+    "val_test": 0
+  },
+  "overlap_all_zero": true
+}
