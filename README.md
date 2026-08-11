@@ -1,6 +1,6 @@
 <div align="center">
 
-# 👶 AtoCatch
+# 👶🏻 AtoCatch
 
 **AI 기반 영유아 아토피 위험 신호 확인 · 피부 상태 분석 · 홈케어 서비스**
 
