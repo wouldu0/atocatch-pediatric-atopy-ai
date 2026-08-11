@@ -76,7 +76,7 @@ AI Hub 합성 이미지와 DermNet 실사 이미지를 별도로 관리하며 �
 | 태스크 | Accuracy | F1 | AUC | Sensitivity(민감도) |
 |---|---:|---:|---:|---:|
 | 아토피 유무 (DermNet holdout) | 79.6% | 80.9% | 0.839 | 88.5% |
-| IGA 중증도 (내부 검증) | 84.4% | 84.3% | 0.876 | 90.6% |
+| IGA 중증도 (base-id 그룹 보존 test) | 77.9% | 79.7% | 0.925 | 74.7% |
 
 ※ DermNet holdout은 모델 선택과 threshold 설정에도 사용되어, 완전히 독립적인 test 성능은 아닙니다.
 
@@ -194,6 +194,32 @@ Kaplan-Meier와 Cox 모델도 탐색했지만, 분석 방법에 따라 유의한
 
 </details>
 
+### 5. IGA 중증도 모델에서도 같은 종류의 방법론 문제를 발견해 재학습
+
+이진분류 모델의 base-id leakage를 고치면서 IGA 중증도 모델도 다시 살펴봤고, base-id 그룹 분할 문제에 더해 **threshold를 test set에서 선택한 뒤 같은 test set에서 성능을 보고하는 문제**가 함께 있었습니다. 두 문제를 모두 고쳐 재학습한 모델로 현재 서비스를 교체했습니다.
+
+<details>
+<summary>IGA 모델 재검증과 재학습 결과 보기</summary>
+
+기존 IGA 모델은 이미지 단위 랜덤 split(Train∩Test 중복 base-id 11개, Test 180장 중 23장 영향)에서, threshold(0.38)까지 test set에서 탐색한 뒤 같은 test set에 적용해 성능을 보고하고 있었습니다. split은 그대로 두고 threshold만 validation 기준으로 다시 선택해도 Accuracy가 83.9%→78.3%로 낮아져, 기존 수치에 leakage와 threshold snooping 두 가지 문제가 함께 섞여 있었음을 확인했습니다.
+
+| | 기존 (랜덤 split, test로 threshold 선택) | 재학습 (base-id 그룹 보존, validation으로 threshold 선택) |
+|---|---:|---:|
+| Threshold | 0.38 | 0.6438 |
+| Accuracy | 83.9% | 77.9% |
+| F1 | 83.7% | 79.7% |
+| AUC | 0.876 | **0.925** |
+| Sensitivity | 90.6% | 74.7% |
+| Specificity | 61.9% | **89.7%** |
+
+Accuracy·Sensitivity가 낮아진 건 성능이 나빠졌다기보다, leakage와 test-set threshold snooping으로 부풀려져 있던 수치가 정상화되고 동시에 threshold 자체가 specificity 쪽으로 이동한 결과입니다(같은 재학습 모델을 threshold 0.5로 보면 Accuracy 84.0%, Sensitivity 85.2%). Threshold·split 방식과 무관한 AUC는 0.876 → **0.925**로 개선됐습니다.
+
+- 기존 파이프라인: `train_iga_severity.py`(학습) → `eval_iga_threshold_search.py`/`eval_iga_final.py`(문제가 있던 threshold 선택 방식)
+- 재학습: `train_iga_grouped_final.py` (base-id 그룹 보존 split + validation threshold 선택, 나머지 학습 설정은 동일)
+- 결과는 seed=42 1회 실행 기준이라, AUC 개선이 leakage 제거 효과인지 test set 자체가 달라진 효과인지는 이 실험만으로 단정할 수 없습니다.
+
+</details>
+
 ---
 
 ## 🛠️ 기술 스택
@@ -239,9 +265,10 @@ AtoCatch/
     │   ├── make_grouped_split.py         # base-id 그룹 보존 split 유틸 (leakage 수정용)
     │   ├── train_binary_grouped_final.py # 현재 배포 모델(best_model.pth) 실제 학습 스크립트
     │   ├── check_aihub_subject_leakage.py # AI Hub base-id 중복(leakage) 점검
-    │   ├── train_iga_severity.py         # IGA 중증도 모델(best_iga_model.pth) 학습 스크립트
-    │   ├── eval_iga_threshold_search.py  # IGA 모델 threshold 탐색 (Youden's J / F1)
-    │   ├── eval_iga_final.py             # IGA 모델 threshold=0.38 최종 평가
+    │   ├── train_iga_severity.py         # IGA 중증도 모델 원본 학습 스크립트 (base-id leakage 있던 버전)
+    │   ├── eval_iga_threshold_search.py  # (구) IGA threshold 탐색 — test set에서 선택하던 버전
+    │   ├── eval_iga_final.py             # (구) IGA 최종 평가 — threshold=0.38, test set 기준
+    │   ├── train_iga_grouped_final.py    # 현재 배포 모델(best_iga_model.pth) 실제 학습 스크립트
     │   ├── predict.py                    # 단일 이미지 추론 (현재 배포 모델 사용)
     │   ├── data_setup.py / data_split.py / data_split_raw.py / data_prepare.py / data_matching.py
     │   ├── utils_gradcam.py              # Grad-CAM 모듈
@@ -260,7 +287,7 @@ AtoCatch/
         └── results/
 ```
 
-> ✅ IGA 중증도 모델(`best_iga_model.pth`)의 학습 스크립트(`train_iga_severity.py`)를 포트폴리오 정리 중 별도 백업에서 다시 찾았습니다. 산출물로 남아있던 `model_config.json`의 성능 수치(Accuracy 84.44%, F1 84.31%, AUC 0.8758, Sensitivity 90.58%, Specificity 64.29%)가 배포된 `app/model_config2.json`과 정확히 일치하고, 아키텍처(`tf_efficientnetv2_s`, `num_classes=2`)도 `best_iga_model.pth`의 strict load 결과와 일치해 실제 배포 모델의 학습 스크립트임을 확인했습니다. 다만 가중치 자체를 재학습해 bit-exact 비교한 것은 아니고 산출물 정합성으로 검증한 것입니다.
+> ✅ IGA 중증도 모델의 원본 학습 스크립트(`train_iga_severity.py`)를 포트폴리오 정리 중 별도 백업에서 다시 찾았고, 산출물 정합성(성능 수치·아키텍처 일치)으로 당시 배포 모델의 학습 스크립트임을 확인했습니다. 이 과정에서 이진분류 모델과 같은 base-id leakage에 더해 threshold를 test set에서 선택하던 문제까지 발견해, 두 문제를 모두 고쳐 재학습(`train_iga_grouped_final.py`)한 모델로 서비스를 교체했습니다 — 자세한 내용은 위 "모델 검증과 의사결정 5" 참고.
 
 </details>
 
@@ -302,6 +329,7 @@ streamlit run app_main.py
 - 원본 학습 스크립트를 찾아 배포된 설문 모델과 계수 bit-exact 일치 검증, 사업계획서의 Isotonic Calibration 오기재 정정
 - 모델 가중치를 Google Drive 런타임 다운로드 방식에서 레포 직접 커밋으로 전환 (외부 의존성 제거)
 - AI Hub base-id leakage 발견 → grouped split 재학습 → 배포 모델 교체 (위 "모델 검증과 의사결정" 참고)
+- IGA 중증도 모델의 원본 학습 스크립트를 별도 백업에서 발견 → 같은 base-id leakage에 더해 test-set threshold snooping까지 확인 → 두 문제 모두 고쳐 재학습 → 배포 모델 교체 (위 "모델 검증과 의사결정 5" 참고)
 - 설문 모델 outcome(Y) 정의를 공식 코드북과 대조해 방법론적 한계 발견·투명하게 공개 (위 참고)
 - 재학습 스크립트의 출력 경로 등 프로젝트 내부 경로를 상대경로로 정리 (AI Hub/DermNet 원본처럼 레포에 없는 외부 대용량 데이터 루트는 다른 학습 스크립트들과 동일하게 사용자가 직접 지정하는 절대경로로 유지)
 - **Grad-CAM 시각화 오류 발견 → Grad-CAM++로 교체**: 실제 사진으로 확인해보니 바닐라 Grad-CAM이 병변이 아닌 정상 피부에 핫스팟을 찍는 경우가 반복돼, 같은 타겟 레이어를 유지한 채 채널별 2차 미분 가중치를 쓰는 Grad-CAM++로 교체(재학습 없이 시각화 가중치 공식만 변경). 실행 테스트로 개선 확인, 다만 완전히 해결된 것은 아님(아래 "한계" 참고)
@@ -316,7 +344,7 @@ streamlit run app_main.py
 - 추적이 중단된 사람이 무작위로 빠졌다고 입증할 수 없어 **attrition bias(추적 탈락에 따른 편향)** 가능성이 남아 있습니다.
 - 화면에 표시되는 저/중/고위험 3단계 구간(0.13 / 0.20)은 모델의 실제 operating threshold(0.12, F2 최적화)와 별개로 UX 표시용으로 정해진 값이며, 통계적으로 도출된 구간은 아닙니다.
 - **이미지 모델**: DermNet holdout 108장을 아키텍처 선택·threshold 설정·성능 보고에 반복 사용했기 때문에, 현재 수치는 완전히 독립적인 외부 테스트 성능이 아닙니다.
-- base-id 그룹 보존 재학습은 seed=42 1회 실행 기준으로, 다른 seed에서도 같은 결과가 유지되는지는 추가 확인이 필요합니다.
+- base-id 그룹 보존 재학습(아토피 유무·IGA 중증도 두 모델 모두)은 seed=42 1회 실행 기준으로, 다른 seed에서도 같은 결과가 유지되는지는 추가 확인이 필요합니다. IGA 모델의 AUC 개선(0.876→0.925)이 leakage 제거 효과인지 test set 자체가 달라진 효과인지도 이 실험만으로는 단정할 수 없습니다.
 - **Grad-CAM**: 판단 근거를 보여주는 참고용 시각화이며, 실제 병변 위치를 항상 정확히 짚어주는 것을 보장하지 않습니다. 바닐라 Grad-CAM에서 병변과 어긋난 활성화가 자주 관찰돼 Grad-CAM++로 교체해 개선했지만, 일부 이미지에서는 여전히 정상 피부에 활성화가 남습니다.
 
 ---
