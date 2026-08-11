@@ -6,7 +6,7 @@
 
 > 스마트폰 피부 사진 한 장과 간단한 설문만으로, 집에서도 아토피 위험 신호를 확인하고 관리한다
 
-[![Streamlit App](https://img.shields.io/badge/🔗_라이브_데모-atocatch.streamlit.app-1b6554?style=for-the-badge)](https://atocatch.streamlit.app/)
+[![Streamlit App](https://img.shields.io/badge/🔗_라이브_데모-atocatch--pediatric.streamlit.app-1b6554?style=for-the-badge)](https://atocatch-pediatric.streamlit.app/)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
