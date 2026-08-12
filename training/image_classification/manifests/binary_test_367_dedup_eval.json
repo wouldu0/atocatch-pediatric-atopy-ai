@@ -1,0 +1,36 @@
+{
+  "note": "best_model.pth (grouped split, no retraining) evaluated on 367-image deduplicated test set",
+  "removed_from_test": [
+    "Validation/01.원천데이터/VS_아토피_측면/Z4_78486_P0_L0.png"
+  ],
+  "n_original_test": 368,
+  "n_deduplicated_test": 367,
+  "n_positive": 181,
+  "n_negative": 186,
+  "metrics_thr_0.5": {
+    "n": 367,
+    "threshold": 0.5,
+    "accuracy": 0.951,
+    "f1_weighted": 0.9509,
+    "roc_auc": 0.9874,
+    "sensitivity": 0.9282,
+    "specificity": 0.9731,
+    "confusion_matrix": [
+      [
+        181,
+        5
+      ],
+      [
+        13,
+        168
+      ]
+    ]
+  },
+  "reference_368_metrics": {
+    "accuracy": 0.9511,
+    "f1_weighted": 0.9511,
+    "roc_auc": 0.9874,
+    "sensitivity": 0.9286,
+    "specificity": 0.9731
+  }
+}

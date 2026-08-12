@@ -1,6 +1,6 @@
 {
   "model_name": "tf_efficientnetv2_s",
-  "threshold": 0.6438,
+  "threshold": 0.4979,
   "num_classes": 2,
   "img_size": 224,
   "label_names": [
@@ -8,13 +8,24 @@
     "moderate_severe"
   ],
   "task": "iga_severity_classification",
-  "split": "base-id group-preserving (seed=42)",
+  "split": "base-id + content(SHA-256) dedup group-preserving (seed=42)",
   "threshold_selection": "Youden's J on validation set (test set untouched)",
   "performance": {
-    "accuracy": 0.779,
-    "f1": 0.7971,
-    "auc": 0.9247,
-    "sensitivity": 0.7465,
-    "specificity": 0.8974
+    "accuracy": 0.8343,
+    "f1": 0.8414,
+    "auc": 0.9152,
+    "sensitivity": 0.8433,
+    "specificity": 0.8049
+  },
+  "historical": {
+    "base_id_grouped_seed42": {
+      "note": "content-level(SHA-256) dedup 이전 버전 — base-id 그룹만 보존, cross-split SHA duplicate 4그룹 포함",
+      "threshold": 0.6438,
+      "accuracy": 0.779,
+      "f1": 0.7971,
+      "auc": 0.9247,
+      "sensitivity": 0.7465,
+      "specificity": 0.8974
+    }
   }
 }

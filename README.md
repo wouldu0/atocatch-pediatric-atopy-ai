@@ -76,7 +76,7 @@ AI Hub 합성 이미지와 DermNet 실사 이미지를 별도로 관리하며 �
 | 태스크 | Accuracy | F1 | AUC | Sensitivity(민감도) |
 |---|---:|---:|---:|---:|
 | 아토피 유무 (DermNet holdout) | 79.6% | 80.9% | 0.839 | 88.5% |
-| IGA 중증도 (base-id 그룹 보존 test) | 77.9% | 79.7% | 0.925 | 74.7% |
+| IGA 중증도 (base-id+content-dedup 그룹 보존 test) | 83.4% | 84.1% | 0.915 | 84.3% |
 
 ※ DermNet holdout은 모델 선택과 threshold 설정에도 사용되어, 완전히 독립적인 test 성능은 아닙니다.
 
@@ -222,6 +222,39 @@ Kaplan-Meier와 Cox 모델도 탐색했지만, 분석 방법에 따라 유의한
 
 </details>
 
+### 6. IGA 이미지에서 SHA-256 기준 완전 동일 파일까지 발견해 다시 재학습
+
+base-id 그룹 보존으로 재학습한 뒤에도, 서로 다른 base-id로 등록된 이미지 중 파일 내용(SHA-256 해시)이 완전히 동일한 경우가 있는지 추가로 점검했습니다. base-id만으로는 잡히지 않는 leakage가 남아있어, 이 중복까지 제거하고 base-id+SHA-256을 함께 묶는 방식으로 다시 분할·재학습한 모델로 현재 서비스를 교체했습니다.
+
+<details>
+<summary>content-level(SHA-256) dedup 점검과 재학습 결과 보기</summary>
+
+전체 1,800장 중 **파일 내용이 완전히 동일한 이미지 9장(8개 그룹)**이 서로 다른 base-id로 중복 등록돼 있었습니다. 이 중 4개 그룹은 train/val/test에 걸쳐 있어 base-id 그룹 분할만으로는 걸러지지 않는 leakage였고, 나머지 4개 그룹은 같은 split 내부 중복이었습니다. 라벨/등급 충돌(같은 이미지가 다른 base-id에서 다른 심각도로 표기된 경우)은 없었습니다.
+
+중복 9장을 제거한 1,791장을 base-id+SHA-256 결합 그룹(1,683개 그룹) 기준으로 다시 나눈 뒤: train 1,260 / val 356 / test 175, **base-id overlap과 SHA-256 overlap 모두 train/val/test 사이에서 0**임을 확인했습니다.
+
+| | 재학습 (base-id 그룹 보존, threshold 0.6438) | content-dedup 재학습 (base-id+SHA-256 그룹 보존, threshold 0.4979) |
+|---|---:|---:|
+| Threshold | 0.6438 | 0.4979 |
+| Accuracy | 77.9% | **83.4%** |
+| F1 | 79.7% | **84.1%** |
+| AUC | **0.925** | 0.915 |
+| Sensitivity | 74.7% | **84.3%** |
+| Specificity | 89.7% | 80.5% |
+
+test confusion matrix(threshold 0.4979, test 175장 기준): mild_or_below 41장 중 33장, moderate_severe 134장 중 113장을 맞혔습니다([[33, 8], [21, 113]]).
+
+AUC는 0.925 → 0.915로 소폭 낮아졌지만 test 표본이 181장 → 175장으로 줄고 구성 자체가 바뀌어 이 한 지표만으로 두 모델을 직접 비교하기는 조심스럽습니다. Accuracy·F1·Sensitivity는 개선됐습니다. 같은 방식으로 binary 모델도 점검했는데, cross-split 완전 동일 이미지가 1쌍만 발견됐고 이를 제거한 367장으로 재평가해도 기존 성능(Accuracy 95.1%)과 사실상 동일해 binary 모델은 재학습하지 않았습니다.
+
+- 점검: `content_dedup_audit.py` (binary+IGA SHA-256 전수 감사, binary dedup 재평가)
+- 재분할: `iga_dedup_split.py` (base-id+SHA-256 connected-component 방식 clean split 생성)
+- 재학습: `train_iga_clean_dedup.py`
+- 보존: `manifests/iga_content_dedup_manifest.csv`(원본 1,800행 + 중복 표시), `manifests/iga_content_dedup_grouped_split_seed42.csv`(clean 1,791행), `manifests/iga_content_dedup_split_verification.json`(overlap 검증), `manifests/iga_clean_dedup_final_metrics.json`(전체 평가 결과)
+- base-id 그룹 보존 재학습(threshold 0.6438) 결과는 `manifests/iga_grouped_split_seed42.csv` 등에 historical로 그대로 남겨뒀습니다.
+- 이 결과 역시 seed=42 1회 실행 기준입니다.
+
+</details>
+
 ---
 
 ## 🛠️ 기술 스택
@@ -274,7 +307,10 @@ AtoCatch/
     │   ├── train_iga_severity.py         # IGA 중증도 모델 원본 학습 스크립트 (base-id leakage 있던 버전)
     │   ├── eval_iga_threshold_search.py  # (구) IGA threshold 탐색 — test set에서 선택하던 버전
     │   ├── eval_iga_final.py             # (구) IGA 최종 평가 — threshold=0.38, test set 기준
-    │   ├── train_iga_grouped_final.py    # 현재 배포 모델(best_iga_model.pth) 실제 학습 스크립트
+    │   ├── train_iga_grouped_final.py    # IGA base-id 그룹 보존 재학습 (historical, content-dedup 이전)
+    │   ├── content_dedup_audit.py        # binary+IGA SHA-256 전수 감사, binary dedup 재평가
+    │   ├── iga_dedup_split.py            # IGA content(SHA-256) dedup + clean split 생성
+    │   ├── train_iga_clean_dedup.py      # 현재 배포 모델(best_iga_model.pth) 실제 학습 스크립트
     │   ├── predict.py                    # 단일 이미지 추론 (app/model_config.json 기준 동적 로드)
     │   ├── recover_and_validate_split.py # raw 삭제 전, binary 모델의 정확한 split 복원·검증
     │   ├── manifests/                    # 보존된 split 파일 목록 (상대경로 + SHA-256, 절대경로 없음)
@@ -296,7 +332,7 @@ AtoCatch/
         └── results/
 ```
 
-> ✅ IGA 중증도 모델의 원본 학습 스크립트(`train_iga_severity.py`)를 포트폴리오 정리 중 별도 백업에서 다시 찾았고, 산출물 정합성(성능 수치·아키텍처 일치)으로 당시 배포 모델의 학습 스크립트임을 확인했습니다. 이 과정에서 이진분류 모델과 같은 base-id leakage에 더해 threshold를 test set에서 선택하던 문제까지 발견해, 두 문제를 모두 고쳐 재학습(`train_iga_grouped_final.py`)한 모델로 서비스를 교체했습니다 — 자세한 내용은 위 "모델 검증과 의사결정 5" 참고.
+> ✅ IGA 중증도 모델의 원본 학습 스크립트(`train_iga_severity.py`)를 포트폴리오 정리 중 별도 백업에서 다시 찾았고, 산출물 정합성(성능 수치·아키텍처 일치)으로 당시 배포 모델의 학습 스크립트임을 확인했습니다. 이 과정에서 이진분류 모델과 같은 base-id leakage에 더해 threshold를 test set에서 선택하던 문제까지 발견해, 두 문제를 모두 고쳐 재학습(`train_iga_grouped_final.py`)한 모델로 서비스를 교체했습니다. 이후 SHA-256 기준 완전 동일 이미지가 base-id를 넘나들며 남아있는 것을 추가로 발견해, 이마저 제거하고 재학습(`train_iga_clean_dedup.py`)한 모델로 다시 교체했습니다 — 자세한 내용은 위 "모델 검증과 의사결정 5·6" 참고.
 
 </details>
 
@@ -339,6 +375,7 @@ streamlit run app_main.py
 - 모델 가중치를 Google Drive 런타임 다운로드 방식에서 레포 직접 커밋으로 전환 (외부 의존성 제거)
 - AI Hub base-id leakage 발견 → grouped split 재학습 → 배포 모델 교체 (위 "모델 검증과 의사결정" 참고)
 - IGA 중증도 모델의 원본 학습 스크립트를 별도 백업에서 발견 → 같은 base-id leakage에 더해 test-set threshold snooping까지 확인 → 두 문제 모두 고쳐 재학습 → 배포 모델 교체 (위 "모델 검증과 의사결정 5" 참고)
+- IGA 이미지에서 base-id를 넘나드는 SHA-256 완전 동일 파일 9장을 추가로 발견 → content-level dedup 후 재학습 → 배포 모델 재교체 (위 "모델 검증과 의사결정 6" 참고)
 - 설문 모델 outcome(Y) 정의를 공식 코드북과 대조해 방법론적 한계 발견·투명하게 공개 (위 참고)
 - 재학습 스크립트의 출력 경로 등 프로젝트 내부 경로를 상대경로로 정리 (AI Hub/DermNet 원본처럼 레포에 없는 외부 대용량 데이터 루트는 다른 학습 스크립트들과 동일하게 사용자가 직접 지정하는 절대경로로 유지), `predict.py`도 개인 PC 절대경로·threshold 하드코딩을 없애고 `app/model_config.json` 기준으로 동적 로드하도록 수정
 - `.gitignore` 추가 (`.env`, 학습 중간 산출물, `merged.csv` 등 — 지금까지 실제로 커밋된 시크릿은 없었음)
@@ -355,7 +392,7 @@ streamlit run app_main.py
 - 추적이 중단된 사람이 무작위로 빠졌다고 입증할 수 없어 **attrition bias(추적 탈락에 따른 편향)** 가능성이 남아 있습니다.
 - 화면에 표시되는 저/중/고위험 3단계 구간(0.13 / 0.20)은 모델의 실제 operating threshold(0.12, F2 최적화)와 별개로 UX 표시용으로 정해진 값이며, 통계적으로 도출된 구간은 아닙니다.
 - **이미지 모델**: DermNet holdout 108장을 아키텍처 선택·threshold 설정·성능 보고에 반복 사용했기 때문에, 현재 수치는 완전히 독립적인 외부 테스트 성능이 아닙니다.
-- base-id 그룹 보존 재학습(아토피 유무·IGA 중증도 두 모델 모두)은 seed=42 1회 실행 기준으로, 다른 seed에서도 같은 결과가 유지되는지는 추가 확인이 필요합니다. IGA 모델의 AUC 개선(0.876→0.925)이 leakage 제거 효과인지 test set 자체가 달라진 효과인지도 이 실험만으로는 단정할 수 없습니다.
+- base-id 그룹 보존 재학습(아토피 유무·IGA 중증도 두 모델 모두)은 seed=42 1회 실행 기준으로, 다른 seed에서도 같은 결과가 유지되는지는 추가 확인이 필요합니다. IGA 모델의 AUC 개선(0.876→0.925)이 leakage 제거 효과인지 test set 자체가 달라진 효과인지도 이 실험만으로는 단정할 수 없습니다. 이후 content-level(SHA-256) dedup 재학습에서는 AUC가 0.925→0.915로 다시 소폭 낮아졌는데, 이 역시 test 표본이 181→175장으로 줄고 구성이 바뀐 영향과 분리해 단정하기 어렵습니다.
 - **Grad-CAM**: 판단 근거를 보여주는 참고용 시각화이며, 실제 병변 위치를 항상 정확히 짚어주는 것을 보장하지 않습니다. 바닐라 Grad-CAM에서 병변과 어긋난 활성화가 자주 관찰돼 Grad-CAM++로 교체해 개선했지만, 일부 이미지에서는 여전히 정상 피부에 활성화가 남습니다.
 
 ---

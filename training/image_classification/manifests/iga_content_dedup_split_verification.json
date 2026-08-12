@@ -1,0 +1,150 @@
+{
+  "timestamp": "2026-08-12 07:27:51",
+  "n_total_original": 1800,
+  "n_unique_sha": 1791,
+  "n_duplicate_groups": 8,
+  "n_cross_split_dup_groups": 4,
+  "n_within_split_dup_groups": 4,
+  "n_extras_removed": 9,
+  "n_clean": 1791,
+  "n_components": 1683,
+  "label_grade_conflict": false,
+  "duplicate_groups": [
+    {
+      "sha256": "0f450d6facdaba820d073907907b6764697c2524fe94f82f5afa3f46c29bfda8",
+      "n_images": 2,
+      "label": "1",
+      "iga_grade": "Severe",
+      "identifiers": [
+        "Z4_74486_P0_L0",
+        "Z4_77368_P0_L0"
+      ],
+      "representative": "Z4_74486_P0_L0",
+      "cross_split": true
+    },
+    {
+      "sha256": "3b5b4bec19fc7fb8b80af6178f9cae8ea6e9629961dccd1902f68a0cb0e41892",
+      "n_images": 2,
+      "label": "1",
+      "iga_grade": "Moderate",
+      "identifiers": [
+        "Z4_74176_P0_L0",
+        "Z4_75763_P0_L0"
+      ],
+      "representative": "Z4_74176_P0_L0",
+      "cross_split": false
+    },
+    {
+      "sha256": "403993759f0654d29a08b63ef19b0aa2347c5c82140f249649e3a96a1fb38dd9",
+      "n_images": 2,
+      "label": "1",
+      "iga_grade": "Moderate",
+      "identifiers": [
+        "Z4_76569_P0_L0",
+        "Z4_78486_P0_L0"
+      ],
+      "representative": "Z4_76569_P0_L0",
+      "cross_split": true
+    },
+    {
+      "sha256": "47d4d16a6a7b95bd25bd3dac8f97110037646034c5cb0926bbbfa5ad51f29c25",
+      "n_images": 2,
+      "label": "1",
+      "iga_grade": "Severe",
+      "identifiers": [
+        "Z4_75946_P0_L0",
+        "Z4_76907_P0_L0"
+      ],
+      "representative": "Z4_75946_P0_L0",
+      "cross_split": false
+    },
+    {
+      "sha256": "757db2a197d1db80dbdb45c3574f4fe068d17bce705294af0ec97ec2766a7961",
+      "n_images": 2,
+      "label": "0",
+      "iga_grade": "Mild",
+      "identifiers": [
+        "Z4_75931_P0_L0",
+        "Z4_75932_P0_L0"
+      ],
+      "representative": "Z4_75931_P0_L0",
+      "cross_split": true
+    },
+    {
+      "sha256": "a1fa4fde652c96f16f620745edc2ff1b8365817b7915d246ea93cd5196770fd4",
+      "n_images": 3,
+      "label": "1",
+      "iga_grade": "Severe",
+      "identifiers": [
+        "Z4_74322_P0_L0",
+        "Z4_75925_P0_L0",
+        "Z4_77536_P0_L0"
+      ],
+      "representative": "Z4_74322_P0_L0",
+      "cross_split": true
+    },
+    {
+      "sha256": "a5a6aeac4eb1fe7d42b770c87905a47acf73ee4795d31f9b278747c51503cbc9",
+      "n_images": 2,
+      "label": "1",
+      "iga_grade": "Moderate",
+      "identifiers": [
+        "Z4_76573_P0_L0",
+        "Z4_78484_P0_L0"
+      ],
+      "representative": "Z4_76573_P0_L0",
+      "cross_split": false
+    },
+    {
+      "sha256": "c98bef029762d259529ba098033245aef2272436fbbd4e44301f2509ca67b79c",
+      "n_images": 2,
+      "label": "1",
+      "iga_grade": "Severe",
+      "identifiers": [
+        "Z4_76254_P0_L0",
+        "Z4_77530_P0_L0"
+      ],
+      "representative": "Z4_76254_P0_L0",
+      "cross_split": false
+    }
+  ],
+  "split": {
+    "train": 1260,
+    "val": 356,
+    "test": 175
+  },
+  "grade_distribution": {
+    "train": {
+      "mild_or_below": 291,
+      "moderate_severe": 969,
+      "mild_pct": 23.1,
+      "msev_pct": 76.9
+    },
+    "val": {
+      "mild_or_below": 83,
+      "moderate_severe": 273,
+      "mild_pct": 23.3,
+      "msev_pct": 76.7
+    },
+    "test": {
+      "mild_or_below": 41,
+      "moderate_severe": 134,
+      "mild_pct": 23.4,
+      "msev_pct": 76.6
+    }
+  },
+  "overlap_verification": {
+    "base_id": {
+      "train_val": 0,
+      "train_test": 0,
+      "val_test": 0
+    },
+    "sha256": {
+      "train_val": 0,
+      "train_test": 0,
+      "val_test": 0
+    },
+    "all_zero": true
+  },
+  "historical_note": "기존 iga_grouped_split_seed42.csv (1800장 base_id only split) 및 iga_grouped_split_seed42_sha256.csv는 historical result로 보존됨."
+}

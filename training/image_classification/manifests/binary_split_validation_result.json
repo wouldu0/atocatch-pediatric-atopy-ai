@@ -87,5 +87,93 @@
     },
     "match": true
   },
-  "manifest_path": "C:/Users/asia/contest_AtoCatch/training/image_classification/manifests/binary_split_candidate_seed42.csv"
+  "manifest_path": "training/image_classification/manifests/binary_split_candidate_seed42.csv",
+  "content_duplicate_groups": {
+    "3b5b4bec19fc7fb8b80af6178f9cae8ea6e9629961dccd1902f68a0cb0e41892": [
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_74176_P0_L0.png"
+      },
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_75763_P0_L0.png"
+      }
+    ],
+    "a1fa4fde652c96f16f620745edc2ff1b8365817b7915d246ea93cd5196770fd4": [
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_74322_P0_L0.png"
+      },
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_75925_P0_L0.png"
+      },
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_77536_P0_L0.png"
+      }
+    ],
+    "0f450d6facdaba820d073907907b6764697c2524fe94f82f5afa3f46c29bfda8": [
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_74486_P0_L0.png"
+      },
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_77368_P0_L0.png"
+      }
+    ],
+    "757db2a197d1db80dbdb45c3574f4fe068d17bce705294af0ec97ec2766a7961": [
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_75931_P0_L0.png"
+      },
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_75932_P0_L0.png"
+      }
+    ],
+    "47d4d16a6a7b95bd25bd3dac8f97110037646034c5cb0926bbbfa5ad51f29c25": [
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_75946_P0_L0.png"
+      },
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_76907_P0_L0.png"
+      }
+    ],
+    "c98bef029762d259529ba098033245aef2272436fbbd4e44301f2509ca67b79c": [
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_76254_P0_L0.png"
+      },
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_77530_P0_L0.png"
+      }
+    ],
+    "a5a6aeac4eb1fe7d42b770c87905a47acf73ee4795d31f9b278747c51503cbc9": [
+      {
+        "split": "train",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_76573_P0_L0.png"
+      },
+      {
+        "split": "train",
+        "relative_path": "Validation/01.원천데이터/VS_아토피_측면/Z4_78484_P0_L0.png"
+      }
+    ]
+  },
+  "cross_split_duplicate_groups": {
+    "403993759f0654d29a08b63ef19b0aa2347c5c82140f249649e3a96a1fb38dd9": [
+      {
+        "split": "val",
+        "relative_path": "Training/01.원천데이터/TS_아토피_측면/Z4_76569_P0_L0.png"
+      },
+      {
+        "split": "test",
+        "relative_path": "Validation/01.원천데이터/VS_아토피_측면/Z4_78486_P0_L0.png"
+      }
+    ]
+  }
 }
