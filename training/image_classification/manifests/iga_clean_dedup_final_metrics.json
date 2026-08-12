@@ -1,7 +1,7 @@
 {
   "timestamp": "2026-08-12 08:01:58",
   "model": "tf_efficientnetv2_s",
-  "checkpoint": "C:\\Users\\asia\\contest_AtoCatch\\training\\image_classification\\outputs\\iga_clean_dedup\\models\\best_iga_clean_dedup.pth",
+  "checkpoint": "training/image_classification/outputs/iga_clean_dedup/models/best_iga_clean_dedup.pth",
   "best_val_acc": 0.8624,
   "val_threshold_youden": 0.497873,
   "val_threshold_f1": 0.318304,

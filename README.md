@@ -53,7 +53,7 @@ AtoCatch는 **“누구에게, 언제 필요한 서비스인가?”**라는 질�
 | 이미지 모델링 | 데이터 전처리, 아키텍처 비교, 학습·평가, Grad-CAM 기반 시각화 |
 | 설문 데이터 | 한국아동패널 데이터 선정, 전처리·파생변수 설계, 위험요인 통계분석(단변량·다중공선성 검토·로지스틱 회귀) |
 
-> 설문 위험도 모델의 학습·threshold 선정(Logistic Regression)은 팀원이 진행했습니다. 웹 서비스(Streamlit 앱 구현)는 다른 팀원이 담당했습니다.
+> 설문 위험도 모델의 학습·threshold 선정(Logistic Regression)은 팀원이 진행했습니다. 웹 서비스(Streamlit 앱) 초기 구현은 다른 팀원이 담당했고, 프로젝트 종료 후 포트폴리오 정리 과정에서 Supabase Auth·기록 저장 구조 재구현, RAG 챗봇 연동, Grad-CAM++ 교체 등 서비스 고도화는 본인이 진행했습니다(자세한 내용은 아래 "프로젝트 종료 후 리팩터링" 참고).
 
 ---
 
@@ -196,7 +196,7 @@ Kaplan-Meier와 Cox 모델도 탐색했지만, 분석 방법에 따라 유의한
 
 ### 5. IGA 중증도 모델에서도 같은 종류의 방법론 문제를 발견해 재학습
 
-이진분류 모델의 base-id leakage를 고치면서 IGA 중증도 모델도 다시 살펴봤고, base-id 그룹 분할 문제에 더해 **threshold를 test set에서 선택한 뒤 같은 test set에서 성능을 보고하는 문제**가 함께 있었습니다. 두 문제를 모두 고쳐 재학습한 모델로 현재 서비스를 교체했습니다.
+이진분류 모델의 base-id leakage를 고치면서 IGA 중증도 모델도 다시 살펴봤고, base-id 그룹 분할 문제에 더해 **threshold를 test set에서 선택한 뒤 같은 test set에서 성능을 보고하는 문제**가 함께 있었습니다. 두 문제를 모두 고쳐 재학습한 모델로 당시 서비스를 1차로 교체했습니다 (이후 아래 6번에서 한 번 더 교체합니다).
 
 <details>
 <summary>IGA 모델 재검증과 재학습 결과 보기</summary>
@@ -271,7 +271,7 @@ Python 3.10+ · PyTorch · timm (EfficientNetV2-S) · scikit-learn · Streamlit 
 
 > ⚠️ AI Hub 데이터는 라이선스 제한으로 레포지토리에 포함되지 않습니다. DermNet NZ 크롤러는 `training/image_classification/data_crawl_dermnet.py`에서 확인할 수 있습니다(DermNet NZ 저작권 하에 있으므로 재사용 시 출처를 명시하세요).
 >
-> 📎 원본 이미지는 올리지 않지만, raw 데이터를 정리하기 전에 실제 배포 모델을 만든 정확한 학습/검증/평가 파일 목록을 `training/image_classification/manifests/`에 상대경로 + SHA-256 해시로 보존해뒀습니다. binary 모델은 `recover_and_validate_split.py`로 candidate split을 재구성한 뒤 배포 모델(`best_model.pth`)로 다시 추론해 기존 `final_summary.json` 수치와 대조했고, 모든 지표가 완전히 일치해 `RECOVERED_FINAL_SPLIT`(3,865행)으로 판정했습니다. IGA 모델은 `iga_grouped_split_seed42.csv`(1,800행)와 `iga_split_verification.json`으로 train/val/test 간 base-id overlap이 0임을 확인해뒀습니다. 학습 환경은 `environment_snapshot.txt`(pip freeze)로 함께 남겼습니다.
+> 📎 원본 이미지는 올리지 않지만, raw 데이터를 정리하기 전에 실제 배포 모델을 만든 정확한 학습/검증/평가 파일 목록을 `training/image_classification/manifests/`에 상대경로 + SHA-256 해시로 보존해뒀습니다. binary 모델은 `recover_and_validate_split.py`로 candidate split을 재구성한 뒤 배포 모델(`best_model.pth`)로 다시 추론해 기존 `final_summary.json` 수치와 대조했고, 모든 지표가 완전히 일치해 `RECOVERED_FINAL_SPLIT`(3,865행)으로 판정했습니다. IGA 모델은 `iga_grouped_split_seed42.csv`(1,800행)와 `iga_split_verification.json`으로 train/val/test 간 base-id overlap이 0임을 확인해뒀습니다(base-id 그룹 보존 단계 기준, historical). **현재 배포 모델의 최종 provenance는 `iga_content_dedup_manifest.csv`(원본 1,800행 + 중복 표시)와 `iga_content_dedup_grouped_split_seed42.csv`(clean 1,791행) — SHA-256 content-level dedup까지 반영된 버전입니다**(자세한 내용은 아래 "모델 검증과 의사결정 6" 참고). 학습 환경은 `environment_snapshot.txt`(pip freeze)로 함께 남겼습니다.
 >
 > 한국아동패널 row-level 파생 데이터(`merged.csv`)는 라이선스 확인이 끝나지 않아 공개 저장소에서는 제외했습니다. 필요 시 `training/survey_model/data_merge.py`로 공식 원자료(PSKC)에서 재생성할 수 있습니다.
 

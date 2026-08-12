@@ -49,7 +49,7 @@ import timm
 REPO_ROOT    = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MANIFEST_DIR = os.path.join(REPO_ROOT, "training", "image_classification", "manifests")
 CLEAN_CSV    = os.path.join(MANIFEST_DIR, "iga_content_dedup_grouped_split_seed42.csv")
-IGA_DATA_ROOT = r"E:\atopic"   # relative_path 앞에 붙이면 절대경로
+IGA_DATA_ROOT = os.getenv("IGA_DATA_ROOT", r"E:\atopic")   # relative_path 앞에 붙이면 절대경로
 
 EXPORT_DIR  = os.getenv(
     "IGA_CLEAN_EXPORT_DIR",
@@ -395,7 +395,7 @@ def main():
     final = {
         "timestamp":             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "model":                 MODEL_NAME,
-        "checkpoint":            ckpt_path,
+        "checkpoint":            os.path.relpath(ckpt_path, REPO_ROOT).replace("\\", "/"),
         "best_val_acc":          round(best_val_acc, 4),
         "val_threshold_youden":  round(val_thr, 6),
         "val_threshold_f1":      round(val_thr_f1, 6),

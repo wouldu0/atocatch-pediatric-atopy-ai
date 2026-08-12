@@ -349,7 +349,9 @@ with open(os.path.join(_BASE_DIR, "model_config.json"), encoding="utf-8") as f:
 with open(os.path.join(_BASE_DIR, "model_config2.json"), encoding="utf-8") as f:
     IGA_THRESHOLD = json.load(f)["threshold"]
 
-# 모델 로딩
+# 모델 로딩 — 추론 시 device(cuda/cpu)와 항상 일치시키기 위해 로드 직후 이 device로 이동
+MODEL_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 @st.cache_resource
 def load_risk_model(): return joblib.load(os.path.join(_BASE_DIR, "atopy_service_model.joblib"))
 
@@ -358,14 +360,14 @@ def load_image_model():
     m = timm.create_model('tf_efficientnetv2_s', pretrained=False, num_classes=2)
     m.load_state_dict(torch.load(_MODEL_PATH, map_location="cpu"))
     m.eval()
-    return m
+    return m.to(MODEL_DEVICE)
 
 @st.cache_resource
 def load_iga_model():
     m = timm.create_model('tf_efficientnetv2_s', pretrained=False, num_classes=2)
     m.load_state_dict(torch.load(_IGA_MODEL_PATH, map_location="cpu"))
     m.eval()
-    return m
+    return m.to(MODEL_DEVICE)
 
 risk_model  = load_risk_model()
 image_model = load_image_model()
@@ -1762,9 +1764,8 @@ def render_image_scan():
             if st.button("🔬 AI 피부 분석 시작", use_container_width=True, type="primary"):
                 with st.spinner("AI가 이미지를 분석하고 있습니다..."):
                     if GRADCAM_OK:
-                        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                         gc_result = predict_with_gradcam(
-                            img, image_model, iga_model, device=device,
+                            img, image_model, iga_model, device=MODEL_DEVICE,
                             atopy_threshold=ATOPY_THRESHOLD, severity_threshold=IGA_THRESHOLD,
                         )
                         atopy_prob = gc_result["atopy_prob"]
@@ -1779,7 +1780,7 @@ def render_image_scan():
                             return base64.b64encode(buf.getvalue()).decode()
                         st.session_state.gradcam_a = _pil_to_b64(gc_result["gradcam_a_overlay"])
                     else:
-                        tensor = IMG_TRANSFORM(img).unsqueeze(0)
+                        tensor = IMG_TRANSFORM(img).unsqueeze(0).to(MODEL_DEVICE)
                         with torch.no_grad():
                             logits = image_model(tensor)
                             probs  = torch.softmax(logits, dim=1)[0]

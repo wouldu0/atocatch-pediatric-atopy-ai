@@ -21,13 +21,16 @@ from sklearn.metrics import (
 
 REPO_ROOT  = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MANIFEST_DIR = os.path.join(REPO_ROOT, "training", "image_classification", "manifests")
-DATA_ROOT    = r"E:\atopic\AIHub"   # 절대경로는 스크립트 내부 참조용, 출력·저장에는 미사용
+DATA_ROOT    = os.getenv("AIHUB_DATA_ROOT", r"E:\atopic\AIHub")   # 절대경로는 스크립트 내부 참조용, 출력·저장에는 미사용
 
 BINARY_CSV   = os.path.join(MANIFEST_DIR, "binary_split_candidate_seed42.csv")
 IGA_CSV_IN   = os.path.join(MANIFEST_DIR, "iga_grouped_split_seed42.csv")
 IGA_CSV_OUT  = os.path.join(MANIFEST_DIR, "iga_grouped_split_seed42_sha256.csv")
 
-MODEL_PATH   = r"E:\atopic\models\binary_grouped_split\tf_efficientnetv2_s\best_model.pth"
+MODEL_PATH   = os.getenv(
+    "BINARY_MODEL_PATH",
+    r"E:\atopic\models\binary_grouped_split\tf_efficientnetv2_s\best_model.pth",
+)
 IMG_SIZE     = 224
 BATCH_SIZE   = 32
 LABEL_NAMES  = ["non_atopy", "atopy"]
@@ -221,7 +224,7 @@ for r in iga_rows:
 
 print(f"  IGA 총 행: {len(iga_rows)}")
 
-IGA_DATA_ROOT = r"E:\atopic"
+IGA_DATA_ROOT = os.getenv("IGA_DATA_ROOT", r"E:\atopic")
 iga_sha_errors = 0
 for r in iga_rows:
     abs_p = os.path.join(IGA_DATA_ROOT, r["relative_path"].replace("/", os.sep).replace('"', ''))
