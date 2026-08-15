@@ -255,6 +255,32 @@ AUC는 0.925 → 0.915로 소폭 낮아졌지만 test 표본이 181장 → 175�
 
 </details>
 
+### 7. 독립 외부 데이터(SkinDisNet)에서 추가 검증
+
+기존 DermNet holdout은 모델 선택과 threshold 설정에도 사용됐다는 한계가 있어, production 모델·threshold(0.2739)·전처리를 모두 동결한 뒤 학습·모델 선택에 전혀 사용하지 않은 SkinDisNet 실사 이미지에서 별도의 external robustness evaluation을 1회 수행했습니다.
+
+<details>
+<summary>SkinDisNet 평가 구성과 결과 보기</summary>
+
+Atopic Dermatitis(AD) 70장을 positive로, Contact Dermatitis·Scabies·Seborrheic Dermatitis·Tinea Corporis(CD/SC/SD/TC) 1,174장을 negative로 사용했습니다. Eczema(EC) 466장은 아토피성 eczema와 라벨 의미가 겹칠 수 있어 사전에 평가에서 제외했습니다. 총 1,244장을 production checkpoint·threshold·전처리 그대로 1회 평가했습니다(재학습·threshold 재탐색 없음).
+
+| 평가 데이터 | Accuracy | Balanced Acc | ROC-AUC | Sensitivity | Specificity |
+|---|---:|---:|---:|---:|---:|
+| DermNet development holdout | 79.6% | - | 0.839 | 88.5% | 76.8% |
+| SkinDisNet independent robustness | 42.9% | 58.3% | 0.619 | 75.7% | 40.9% |
+
+DermNet holdout과 SkinDisNet은 역할이 다른 평가이고 데이터 출처·촬영 환경·negative 질환 구성도 서로 달라, 두 수치를 직접적인 전후 비교로 해석하지 않습니다. 고정된 production threshold(0.2739)에서 sensitivity 75.7%, specificity 40.9%로, 비아토피 피부질환(CD/SC/SD/TC)을 아토피로 분류하는 false positive가 많이 발생했습니다. 질환별 false-positive rate는 CD 54.7%, SC 70.0%, SD 58.2%, TC 53.5%였습니다. ROC-AUC는 0.619로 0.5를 상회했으나, 새로운 외부 환경에서의 판별력은 제한적이었습니다(통계적 유의성 검정은 수행하지 않음).
+
+Data integrity: SkinDisNet 내부 SHA-256 exact duplicate 0건, 기존 DermNet과 exact SHA-256 overlap 0건을 확인했습니다. 참고용 average-hash 기반 유사도 스크리닝에서는 SkinDisNet 내부 1,697쌍, DermNet과 106쌍의 similarity candidate가 나왔지만, 단순 average-hash는 색·구도·병변 영역이 비슷한 서로 다른 피부 이미지도 후보로 많이 잡을 수 있어 확정된 중복으로 보지 않았고, 이를 이유로 샘플을 제외하지도 않았습니다.
+
+SkinDisNet에는 patient ID·age·sex 등 metadata가 없어 patient-level 또는 특정 연령대 대상 평가는 수행하지 못했습니다.
+
+- 평가: `training/image_classification/eval_binary_skindisnet_external.py` (`--data-root`로 SkinDisNet 경로 지정, 개인 PC 절대경로는 저장소에 없음)
+- 산출물: `training/image_classification/outputs/external_skindisnet/`(evaluation_summary.md, metrics.json, predictions.csv, confusion_matrix.png, dataset_audit.json — 다른 학습 산출물과 동일하게 `outputs/`는 저장소에 커밋하지 않음)
+- 이 평가를 이유로 모델·threshold·전처리를 변경하지 않았습니다.
+
+</details>
+
 ---
 
 ## 🛠️ 기술 스택
@@ -392,6 +418,8 @@ streamlit run app_main.py
 - 추적이 중단된 사람이 무작위로 빠졌다고 입증할 수 없어 **attrition bias(추적 탈락에 따른 편향)** 가능성이 남아 있습니다.
 - 화면에 표시되는 저/중/고위험 3단계 구간(0.13 / 0.20)은 모델의 실제 operating threshold(0.12, F2 최적화)와 별개로 UX 표시용으로 정해진 값이며, 통계적으로 도출된 구간은 아닙니다.
 - **이미지 모델**: DermNet holdout 108장을 아키텍처 선택·threshold 설정·성능 보고에 반복 사용했기 때문에, 현재 수치는 완전히 독립적인 외부 테스트 성능이 아닙니다.
+- SkinDisNet 외부평가는 metadata(patient ID·age·sex)가 없어 patient-level이나 특정 연령대(예: 영유아) 대상 평가로 해석할 수 없습니다.
+- SkinDisNet의 negative 질환 구성(Contact Dermatitis·Scabies·Seborrheic Dermatitis·Tinea Corporis)은 기존 학습 데이터의 클래스 구성과 다르므로, 이번 결과는 기존 모델 성능의 직접적인 재평가가 아니라 새로운 질환·촬영 환경에 대한 robustness test로 해석합니다.
 - base-id 그룹 보존 재학습(아토피 유무·IGA 중증도 두 모델 모두)은 seed=42 1회 실행 기준으로, 다른 seed에서도 같은 결과가 유지되는지는 추가 확인이 필요합니다. IGA 모델의 AUC 개선(0.876→0.925)이 leakage 제거 효과인지 test set 자체가 달라진 효과인지도 이 실험만으로는 단정할 수 없습니다. 이후 content-level(SHA-256) dedup 재학습에서는 AUC가 0.925→0.915로 다시 소폭 낮아졌는데, 이 역시 test 표본이 181→175장으로 줄고 구성이 바뀐 영향과 분리해 단정하기 어렵습니다.
 - **Grad-CAM**: 판단 근거를 보여주는 참고용 시각화이며, 실제 병변 위치를 항상 정확히 짚어주는 것을 보장하지 않습니다. 바닐라 Grad-CAM에서 병변과 어긋난 활성화가 자주 관찰돼 Grad-CAM++로 교체해 개선했지만, 일부 이미지에서는 여전히 정상 피부에 활성화가 남습니다.
 
